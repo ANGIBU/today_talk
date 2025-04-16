@@ -1,0 +1,141 @@
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.page-title {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 20px;
+    color: #333;
+}
+
+.post-list-wrapper {
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.post-header {
+    display: grid;
+    grid-template-columns: 1fr 120px 100px 120px;
+    gap: 10px;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    font-weight: bold;
+}
+
+.post-list {
+    padding: 10px;
+}
+
+.post-item {
+    display: grid;
+    grid-template-columns: 1fr 120px 100px 120px;
+    gap: 10px;
+    padding: 15px;
+    border-bottom: 1px solid #eee;
+    align-items: center;
+}
+
+.post-item:hover {
+    background-color: #f8f9fa;
+}
+
+.post-title-content {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.post-thumbnail {
+    width: 60px;
+    height: 40px;
+    object-fit: cover;
+    border-radius: 4px;
+}
+
+.post-title {
+    color: #333;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.post-title:hover {
+    color: #007bff;
+}
+
+.post-author {
+    color: #666;
+    font-size: 14px;
+}
+
+.post-views {
+    color: #666;
+    text-align: center;
+}
+
+.post-date {
+    color: #666;
+    font-size: 14px;
+    text-align: center;
+}
+
+.no-posts {
+    padding: 40px;
+    text-align: center;
+    color: #666;
+}
+
+.pagination {
+    display: flex;
+    justify-content: center;
+    gap: 5px;
+    margin-top: 20px;
+}
+
+.btn {
+    padding: 8px 12px;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    text-decoration: none;
+    color: #333;
+}
+
+.btn:hover {
+    background-color: #e9ecef;
+}
+
+.btn.active {
+    background-color: #007bff;
+    color: #fff;
+    border-color: #007bff;
+}
+
+.header-divider,
+.content-divider {
+    width: 1px;
+    background-color: #dee2e6;
+    margin: 0 10px;
+}
+
+@media (max-width: 768px) {
+    .post-header, 
+    .post-item {
+        grid-template-columns: 1fr 100px;
+    }
+    
+    .post-views-header,
+    .post-views,
+    .post-date-header,
+    .post-date {
+        display: none;
+    }
+    
+    .post-thumbnail {
+        width: 50px;
+        height: 35px;
+    }
+}

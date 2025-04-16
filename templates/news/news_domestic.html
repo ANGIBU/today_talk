@@ -1,0 +1,75 @@
+{% extends "layout.html" %}
+
+{% block title %}국내 뉴스{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/news_domestic.css') }}">
+
+<div class="container">
+    <h1 class="page-title">국내 뉴스</h1>
+
+    <div class="post-list-wrapper">
+        <div class="post-header">
+            <span class="post-title-header">제목</span>
+            <div class="header-divider"></div>
+            <span class="post-author-header">언론사</span>
+            <div class="header-divider"></div>
+            <span class="post-views-header">조회수</span>
+            <div class="header-divider"></div>
+            <span class="post-date-header">발행일</span>
+        </div>
+
+        <div class="post-list">
+            {% if news_items and news_items.items %}
+                {% for news in news_items.items %}
+                    <div class="post-item">
+                        <a href="{{ url_for('news.detail', news_id=news.id) }}" class="post-title">
+                            <div class="post-title-content">
+                                {% if news.thumbnail %}
+                                    <img src="{{ news.thumbnail }}" alt="썸네일" class="post-thumbnail">
+                                {% endif %}
+                                {{ news.title }}
+                            </div>
+                        </a>
+                        <div class="content-divider"></div>
+                        <span class="post-author">{{ news.source }}</span>
+                        <div class="content-divider"></div>
+                        <span class="post-views">{{ news.views or 0 }}</span>
+                        <div class="content-divider"></div>
+                        <span class="post-date">{{ news.published_at.strftime('%Y-%m-%d') if news.published_at else '날짜 없음' }}</span>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="no-posts">
+                    <p>등록된 뉴스가 없습니다.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if news_items and news_items.pages > 1 %}
+    <div class="pagination">
+        {% if news_items.page > 1 %}
+            <a href="{{ url_for('news.domestic', page=1) }}" class="btn btn-secondary">&laquo;</a>
+            <a href="{{ url_for('news.domestic', page=news_items.page - 1) }}" class="btn btn-secondary">&lt;</a>
+        {% endif %}
+
+        {% set start_page = 1 if news_items.page - 2 < 1 else news_items.page - 2 %}
+        {% set end_page = news_items.pages if news_items.page + 2 > news_items.pages else news_items.page + 2 %}
+
+        {% for p in range(start_page, end_page + 1) %}
+            {% if p == news_items.page %}
+                <span class="btn btn-secondary active">{{ p }}</span>
+            {% else %}
+                <a href="{{ url_for('news.domestic', page=p) }}" class="btn btn-secondary">{{ p }}</a>
+            {% endif %}
+        {% endfor %}
+
+        {% if news_items.page < news_items.pages %}
+            <a href="{{ url_for('news.domestic', page=news_items.page + 1) }}" class="btn btn-secondary">&gt;</a>
+            <a href="{{ url_for('news.domestic', page=news_items.pages) }}" class="btn btn-secondary">&raquo;</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

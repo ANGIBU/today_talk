@@ -1,0 +1,14 @@
+flask
+flask-migrate
+flask-login
+flask-mail
+flask-cors
+python-dotenv
+sqlalchemy
+werkzeug
+Pillow
+captcha
+requests
+beautifulsoup4
+pymysql
+flask-sqlalchemy

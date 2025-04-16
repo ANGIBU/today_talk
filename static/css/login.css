@@ -1,0 +1,250 @@
+body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    background-color: #f0f0f0;
+    position: relative;
+    overflow-x: hidden;
+}
+
+.wrapper {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, calc(-50% - 15px));
+    width: 100%;
+    max-width: 400px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.logo {
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.logo a img {
+    max-height: 70px;
+    width: auto;
+}
+
+.container {
+    width: 100%;
+    padding: 20px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background-color: #f9f9f9;
+    box-sizing: border-box;
+}
+
+.container h1,
+.signup-content h2 {
+    text-align: center;
+    font-size: 24px;
+    margin-bottom: 20px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+    position: relative;
+}
+
+label {
+    display: flex;
+    align-items: center;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+label small {
+    margin-left: 8px;
+    font-weight: normal;
+    color: #666;
+}
+
+input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+input.invalid {
+    border-color: #dc3545;
+}
+
+input.valid {
+    border-color: #28a745;
+}
+
+.validation-container {
+    display: flex;
+    flex-direction: column;
+    margin-top: 5px;
+}
+
+.validation-message,
+.validation-error {
+    font-size: 0.85rem;
+    line-height: 1.4;
+    transition: color 0.3s ease;
+}
+
+.validation-message .form-hint {
+    color: #888;
+}
+
+.validation-message .form-hint.invalid {
+    color: #dc3545;
+}
+
+.validation-message .form-hint.valid {
+    color: #28a745;
+}
+
+.validation-error .error-message {
+    color: #dc3545;
+}
+
+.validation-error .error-message.valid {
+    color: #28a745;
+}
+
+/* 버튼 스타일 */
+button {
+    width: 100%;
+    padding: 10px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.login-btn {
+    background-color: #cccccc;
+    color: #fff;
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.login-btn:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
+
+.login-btn.active {
+    background-color: #007bff;
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.login-btn.active:hover {
+    background-color: #0056b3;
+}
+
+.signup-btn {
+    margin-top: 20px;
+    background-color: #007bff;
+    color: white;
+}
+
+.signup-btn:hover {
+    background-color: #0056b3;
+}
+
+/* 사이드 패널 */
+.signup-panel {
+    position: fixed;
+    top: 0;
+    right: -400px;
+    width: 100%;
+    max-width: 400px;
+    height: 100vh;
+    background-color: #fff;
+    box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
+    transition: right 0.3s ease-in-out;
+    overflow-y: auto;
+    z-index: 1000;
+}
+
+.signup-panel.show {
+    right: 0;
+}
+
+.signup-content {
+    padding: 30px;
+    position: relative;
+}
+
+.close-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #666;
+    cursor: pointer;
+    padding: 5px 10px;
+    width: auto;
+}
+
+.close-btn:hover {
+    color: #333;
+    background: none;
+}
+
+p {
+    text-align: center;
+    margin: 15px 0;
+    color: #666;
+}
+
+a {
+    color: #007bff;
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+a:hover {
+    color: #0056b3;
+}
+
+@media (max-width: 480px) {
+    .wrapper {
+        width: 90%;
+    }
+
+    .container,
+    .signup-panel {
+        padding: 15px;
+    }
+
+    .signup-panel {
+        max-width: 100%;
+    }
+}
+.form-group.remember-me {
+    display: flex;
+    align-items: center;
+    gap: 5px; /* 체크박스와 텍스트 사이 여백 */
+    justify-content: flex-start; /* 왼쪽 정렬 */
+}
+
+.form-group.remember-me input[type="checkbox"] {
+    margin: 0;
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+.form-group.remember-me label {
+    font-size: 14px;
+    cursor: pointer;
+    margin: 0;
+}

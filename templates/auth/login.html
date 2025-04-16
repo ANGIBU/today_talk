@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>로그인</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/background.css') }}">
+</head>
+
+<body>
+    <canvas id="backgroundCanvas"></canvas>
+    <div class="wrapper">
+        <div class="logo">
+            <a href="{{ url_for('home.index') }}">
+                <img src="#" alt="로고사진">
+            </a>
+        </div>
+        <div class="container">
+            <h1>로그인</h1>
+            <form method="POST" action="{{ url_for('auth.login') }}" id="loginForm">
+                <div class="form-group">
+                    <label for="username">아이디</label>
+                    <input type="text" name="username" id="username" placeholder="아이디 입력" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">비밀번호</label>
+                    <input type="password" name="password" id="password" placeholder="비밀번호 입력" required>
+                </div>
+                <!-- 로그인 유지 체크박스 추가 -->
+                <div class="form-group remember-me">
+                    <input type="checkbox" name="remember_me" id="remember_me">
+                    <label for="remember_me">로그인 상태유지</label>
+                </div>
+
+                <button type="submit" class="login-btn" id="loginButton" disabled>로그인</button>
+            </form>
+            <p>계정이 없으신가요? <a href="#" id="showSignup">회원가입</a></p>
+            <p>비밀번호를 잊으셨나요? <a href="{{ url_for('auth.reset_password') }}">비밀번호 재설정</a></p>
+        </div>
+    </div>
+    <div class="signup-panel" id="signupPanel">
+        <div class="signup-content">
+            <button class="close-btn" id="closeSignup">&times;</button>
+            <h2>회원가입</h2>
+            <form method="POST" action="{{ url_for('auth.register') }}" id="signupForm">
+                <div class="form-group">
+                    <label for="nickname">닉네임</label>
+                    <input type="text" name="nickname" id="nickname" required>
+                    <div class="validation-container">
+                        <div class="validation-message">
+                            <span class="form-hint">3~8자 이내</span>
+                        </div>
+                        <div class="validation-error">
+                            <span class="error-message"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="signup-username">아이디</label>
+                    <input type="text" name="username" id="signup-username" required>
+                    <div class="validation-container">
+                        <div class="validation-message">
+                            <span class="form-hint">4~16자 이내</span>
+                        </div>
+                        <div class="validation-error">
+                            <span class="error-message"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="signup-email">이메일</label>
+                    <input type="email" name="email" id="signup-email" required>
+                    <div class="validation-container">
+                        <div class="validation-message">
+                            <span class="form-hint">유효한 이메일 주소를 입력하세요</span>
+                        </div>
+                        <div class="validation-error">
+                            <span class="error-message"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="signup-password">비밀번호</label>
+                    <input type="password" name="password" id="signup-password" required>
+                    <div class="validation-container">
+                        <div class="validation-message">
+                            <span class="form-hint">8~20자 이내</span>
+                        </div>
+                        <div class="validation-error">
+                            <span class="error-message"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="password-confirm">비밀번호 확인</label>
+                    <input type="password" name="password_confirm" id="password-confirm" required>
+                    <div class="validation-container">
+                        <div class="validation-message">
+                            <span class="form-hint">비밀번호를 한번 더 입력해주세요</span>
+                        </div>
+                        <div class="validation-error">
+                            <span class="error-message"></span>
+                        </div>
+                    </div>
+                </div>
+                <button type="submit" class="signup-btn">가입하기</button>
+            </form>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='js/background.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/login.js') }}"></script>
+</body>
+
+</html>

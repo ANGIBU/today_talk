@@ -1,0 +1,76 @@
+<!-- header.html -->
+<header class="header">
+    <nav class="nav">
+        <button class="burger" id="burger">
+            <span class="burger__line"></span>
+            <span class="burger__line"></span>
+            <span class="burger__line"></span>
+        </button>
+        <a href="{{ url_for('home.index') }}" class="logo">
+            <img src="#" alt="로고사진">
+        </a>
+        <div class="auth">
+            {% if current_user.is_authenticated %}
+            <span class="auth__username">{{ current_user.nickname or current_user.username }} 님</span>
+            <a href="{{ url_for('auth.logout') }}" class="auth__btn auth__logout-btn">로그아웃</a>
+            {% else %}
+            <a href="{{ url_for('auth.login') }}" class="auth__btn auth__login-btn">로그인</a>
+            {% endif %}
+        </div>
+    </nav>
+</header>
+
+<aside class="sidemenu" id="sidemenu">
+    <ul class="sidemenu__list">
+        <li class="sidemenu__item sidemenu__item--static darkmode-container">
+            <div class="darkmode darkmode--static">
+                <span class="darkmode__text">
+                    <span class="mode-text">다크모드</span>
+                </span>
+                <label class="darkmode__toggle">
+                    <input type="checkbox" class="darkmode__input">
+                    <span class="darkmode__slider">
+                        <span class="darkmode__icon"></span>
+                    </span>
+                </label>
+            </div>
+        </li>
+
+        <li class="sidemenu__item">
+            <a href="{{ url_for('home.index') }}" class="sidemenu__link">메인</a>
+        </li>
+
+        <li class="sidemenu__item">
+            <button class="sidemenu__button" onclick="toggleSubmenu('posts')">
+                게시글
+                <span class="sidemenu__arrow">▶</span>
+            </button>
+            <ul class="submenu" id="posts-submenu">
+                <li><a href="{{ url_for('posts.get_posts', category='all') }}" class="submenu__link">전체</a></li>
+                <li><a href="{{ url_for('posts.get_posts', category='popular') }}" class="submenu__link">인기</a></li>
+                <li><a href="{{ url_for('posts.get_posts', category='free') }}" class="submenu__link">자유</a></li>
+                <li><a href="{{ url_for('posts.get_posts', category='humor') }}" class="submenu__link">유머</a></li>
+                <li><a href="{{ url_for('posts.get_posts', category='info') }}" class="submenu__link">정보</a></li>
+            </ul>
+        </li>
+
+        <li class="sidemenu__item">
+            <button class="sidemenu__button" onclick="toggleSubmenu('news')">
+                뉴스
+                <span class="sidemenu__arrow">▶</span>
+            </button>
+            <ul class="submenu" id="news-submenu">
+                <li><a href="{{ url_for('news.all') }}" class="submenu__link">전체</a></li>
+                <li><a href="{{ url_for('news.hot_issues') }}" class="submenu__link">핫이슈</a></li>
+                <li><a href="{{ url_for('news.politics') }}" class="submenu__link">정치</a></li>
+                <li><a href="{{ url_for('news.economy') }}" class="submenu__link">경제</a></li>
+                <li><a href="{{ url_for('news.domestic') }}" class="submenu__link">국내</a></li>
+                <li><a href="{{ url_for('news.world') }}" class="submenu__link">세계</a></li>
+            </ul>
+        </li>
+
+        <li class="sidemenu__item">
+            <a href="{{ url_for('home.index') }}" class="sidemenu__link">고객 문의</a>
+        </li>
+    </ul>
+</aside>

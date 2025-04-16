@@ -1,0 +1,48 @@
+{% extends "layout.html" %}
+
+{% block title %}홈 - PanArchive{% endblock %}
+
+{% block content %}
+    <!-- 밤하늘 배경 요소 -->
+    <div class="night-sky">
+        <div class="moon"></div>
+        <div class="stars"></div>
+    </div>
+
+    <div class="home-container">
+        <!-- div1: 환영 메시지와 이미지 링크 -->
+        <div class="welcome-container welcome-section">
+            <h1 class="welcome-title">소통하는 즐거움 판카이브</h1>
+            <p class="welcome-description">자유로운 커뮤니티와 각종 뉴스들의 정보들을 확인하세요!</p>
+            <div class="image-link">
+                <!-- 만남의 광장 이미지 추가 예정 <img src="{{ url_for('static', filename='images/logo.png') }}" alt="판카이브 로고"> -->
+            </div>
+        </div>
+
+        <!-- div2: 인기 게시글 섹션 -->
+        <div class="posts-container posts-section">
+            <section class="popular-posts">
+                <h2 class="section-title">인기 게시글</h2>
+                <a href="#" class="more-button">더보기</a>
+                <ul class="posts-list">
+                    {% for post in popular_posts %}
+                        <li><a href="#" class="post-link">{{ post.title }}</a></li>
+                    {% endfor %}
+                </ul>
+            </section>
+        </div>
+
+        <!-- div3: 최신 뉴스 섹션 -->
+        <div class="news-container news-section">
+            <section class="recent-news">
+                <h2 class="section-title">최신 뉴스</h2>
+                <a href="#" class="more-button">더보기</a>
+                <ul class="news-list">
+                    {% for news in recent_news %}
+                        <li><a href="#" class="news-link">{{ news.title }}</a></li>
+                    {% endfor %}
+                </ul>
+            </section>
+        </div>
+    </div>
+{% endblock %}

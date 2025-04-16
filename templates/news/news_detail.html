@@ -1,0 +1,114 @@
+{% extends "layout.html" %}
+
+{% block title %}{{ news.title }}{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/news_detail.css') }}">
+
+<div class="container">
+    <div class="news-header">
+        <div class="news-meta">
+            <span class="news-category" data-category="{{ news.category }}">
+                {% if news.category == 'world' %}
+                    세계
+                {% elif news.category == 'politics' %}
+                    정치
+                {% elif news.category == 'economy' %}
+                    경제
+                {% elif news.category == 'domestic' %}
+                    국내
+                {% else %}
+                    {{ news.category }}
+                {% endif %}
+            </span>
+            <span class="news-date">{{ news.published_at.strftime('%Y.%m.%d. %H:%M') }}</span>
+            <span class="news-source">{{ news.source }}</span>
+            <span class="news-views">조회수 {{ news.views }}</span>
+        </div>
+        
+        <h1 class="news-title">{{ news.title }}</h1>
+        
+        {% if news.author %}
+        <div class="news-author">
+            <span class="author-name">{{ news.author }}</span>
+            {% if news.author_email %}
+            <span class="author-email">{{ news.author_email }}</span>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="newsct_article">
+        <article class="dic_area">
+            {% if news.images %}
+                {% for image in news.images %}
+                <div class="end_photo_org">
+                    <div class="news-image-wrap">
+                        <div class="news-image">
+                            <img src="{{ image.url }}" alt="{{ image.alt }}" class="news-img">
+                        </div>
+                    </div>
+                    {% if image.caption %}
+                    <em class="img_desc">{{ image.caption | safe }}</em>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            {% endif %}
+
+            <div class="news-content">
+                {{ news.content | safe }}
+            </div>
+        </article>
+    </div>
+
+    <div class="news-footer">
+        {% if news.source_url %}
+        <div class="original-source">
+            <a href="{{ news.source_url }}" class="original-link" target="_blank">기사원문</a>
+        </div>
+        {% endif %}
+
+        <div class="copyright">
+            <p>Copyright ⓒ {{ news.source }}. All rights reserved. 무단 전재 및 재배포 금지.</p>
+        </div>
+        
+        <div class="share-buttons">
+            <button class="share-btn" data-type="facebook">
+                <i class="share-icon facebook"></i>
+                <span>공유하기</span>
+            </button>
+            <button class="share-btn" data-type="twitter">
+                <i class="share-icon twitter"></i>
+                <span>트윗하기</span>
+            </button>
+            <button class="share-btn" data-type="link">
+                <i class="share-icon link"></i>
+                <span>URL 복사</span>
+            </button>
+        </div>
+    </div>
+
+    {% if news.related_news %}
+    <div class="related-news">
+        <h3>관련 뉴스</h3>
+        <ul class="related-news-list">
+            {% for related in news.related_news %}
+            <li class="related-news-item">
+                <a href="{{ url_for('news.detail', news_id=related.id) }}">
+                    {% if related.thumbnail %}
+                    <div class="related-thumb">
+                        <img src="{{ related.thumbnail }}" alt="관련 뉴스 이미지">
+                    </div>
+                    {% endif %}
+                    <div class="related-info">
+                        <h4 class="related-title">{{ related.title }}</h4>
+                        <span class="related-date">{{ related.published_at.strftime('%Y.%m.%d') }}</span>
+                    </div>
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

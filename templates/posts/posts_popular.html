@@ -1,0 +1,104 @@
+{% extends "layout.html" %}
+
+{% block title %}인기 게시글{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/posts_popular.css') }}">
+
+<div class="container">
+    <h1 class="page-title">인기 게시글</h1>
+    <p class="page-description">최근 일주일간 가장 인기 있었던 게시글입니다.</p>
+
+    <div class="board-sections">
+        <!-- 자유 게시판 인기글 -->
+        <div class="board-section">
+            <h2 class="section-title">자유 게시판 인기글</h2>
+            <div class="post-list">
+                {% if popular_free %}
+                {% for post in popular_free %}
+                <div class="post-item">
+                    <span class="rank">{{ loop.index }}</span>
+                    <a href="{{ url_for('posts.detail_post', post_id=post.id) }}" class="post-title">
+                        <div class="post-title-content">
+                            {% if post.images %}
+                            <img src="{{ url_for('static', filename='uploads/' + post.images[0]) }}" alt="썸네일" class="post-thumbnail">
+                            {% endif %}
+                            {{ post.title }}
+                            <span class="comment-count">[{{ post.comments|length }}]</span>
+                        </div>
+                    </a>
+                    <div class="post-info">
+                        <span class="post-author">{{ post.user.username }}</span>
+                        <span class="post-views">조회 {{ post.views }}</span>
+                        <span class="post-date">{{ post.created_at.strftime('%Y-%m-%d') }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+                {% else %}
+                <p class="no-posts">인기 게시글이 없습니다.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- 유머 게시판 인기글 -->
+        <div class="board-section">
+            <h2 class="section-title">유머 게시판 인기글</h2>
+            <div class="post-list">
+                {% if popular_humor %}
+                {% for post in popular_humor %}
+                <div class="post-item">
+                    <span class="rank">{{ loop.index }}</span>
+                    <a href="{{ url_for('posts.detail_post', post_id=post.id) }}" class="post-title">
+                        <div class="post-title-content">
+                            {% if post.images %}
+                            <img src="{{ url_for('static', filename='uploads/' + post.images[0]) }}" alt="썸네일" class="post-thumbnail">
+                            {% endif %}
+                            {{ post.title }}
+                            <span class="comment-count">[{{ post.comments|length }}]</span>
+                        </div>
+                    </a>
+                    <div class="post-info">
+                        <span class="post-author">{{ post.user.username }}</span>
+                        <span class="post-views">조회 {{ post.views }}</span>
+                        <span class="post-date">{{ post.created_at.strftime('%Y-%m-%d') }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+                {% else %}
+                <p class="no-posts">인기 게시글이 없습니다.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- 정보 게시판 인기글 -->
+        <div class="board-section">
+            <h2 class="section-title">정보 게시판 인기글</h2>
+            <div class="post-list">
+                {% if popular_info %}
+                {% for post in popular_info %}
+                <div class="post-item">
+                    <span class="rank">{{ loop.index }}</span>
+                    <a href="{{ url_for('posts.detail_post', post_id=post.id) }}" class="post-title">
+                        <div class="post-title-content">
+                            {% if post.images %}
+                            <img src="{{ url_for('static', filename='uploads/' + post.images[0]) }}" alt="썸네일" class="post-thumbnail">
+                            {% endif %}
+                            {{ post.title }}
+                            <span class="comment-count">[{{ post.comments|length }}]</span>
+                        </div>
+                    </a>
+                    <div class="post-info">
+                        <span class="post-author">{{ post.user.username }}</span>
+                        <span class="post-views">조회 {{ post.views }}</span>
+                        <span class="post-date">{{ post.created_at.strftime('%Y-%m-%d') }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+                {% else %}
+                <p class="no-posts">인기 게시글이 없습니다.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

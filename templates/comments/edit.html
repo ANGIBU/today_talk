@@ -1,0 +1,11 @@
+{% extends "layout.html" %}
+
+{% block title %}댓글 수정 - PanArchive{% endblock %}
+
+{% block content %}
+<h1>댓글 수정</h1>
+<form method="POST">
+    <textarea name="content" rows="5" required>{{ comment.content }}</textarea>
+    <button type="submit" class="button">수정</button>
+</form>
+{% endblock %}

@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>🔥 핫이슈</h2>
+<div class="news-container">
+    {% for news in hot_issues %}
+    <div class="news-item">
+        {% if news.thumbnail %}
+            <img src="{{ news.thumbnail }}" alt="썸네일">
+        {% endif %}
+        <h3><a href="{{ news.link }}" target="_blank">{{ news.title }}</a></h3>
+        <p>{{ news.press }} | {{ news.date }}</p>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

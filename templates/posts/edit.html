@@ -1,0 +1,16 @@
+{% extends "layout.html" %}
+
+{% block title %}게시글 수정 - PanArchive{% endblock %}
+
+{% block content %}
+<h1>게시글 수정</h1>
+<form method="POST">
+    <label for="title">제목</label>
+    <input type="text" id="title" name="title" value="{{ post.title }}" required>
+
+    <label for="content">내용</label>
+    <textarea id="content" name="content" rows="10" required>{{ post.content }}</textarea>
+
+    <button type="submit" class="button">수정</button>
+</form>
+{% endblock %}

@@ -1,0 +1,155 @@
+{% extends "layout.html" %}
+
+{% block title %}{{ post.title }}{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/detail.css') }}">
+
+<div class="container">
+    <div class="post-container">
+        <div class="post-header">
+            <h1 class="post-title">{{ post.title }}</h1>
+            <div class="post-info">
+                <span class="post-author">{{ post.user.username }}</span>
+                <div class="info-divider"></div>
+                <span class="post-date">{{ post.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                <div class="info-divider"></div>
+                <span class="post-views">조회 {{ post.views }}</span>
+            </div>
+        </div>
+
+        <div class="post-content">
+            {% if post.images %}
+            <div class="post-images">
+                {% for image in post.images %}
+                <img src="{{ url_for('static', filename='uploads/' + image) }}" alt="게시글 이미지" class="content-image">
+                {% endfor %}
+            </div>
+            {% endif %}
+            <div class="content-text">
+                {{ post.content|safe }}
+            </div>
+        </div>
+
+        <div class="post-actions">
+            {% if current_user.id == post.user_id %}
+            <a href="{{ url_for('posts.update_post', post_id=post.id) }}" class="btn btn-edit">수정</a>
+            <form action="{{ url_for('posts.delete_post', post_id=post.id) }}" method="POST" class="delete-form">
+                <button type="submit" class="btn btn-delete" onclick="return confirm('정말 삭제하시겠습니까?')">삭제</button>
+            </form>
+            {% endif %}
+            <a href="{{ url_for('posts.get_posts', category=post.category) }}" class="btn btn-list">목록</a>
+        </div>
+    </div>
+
+    <div class="comments-section">
+        <h2 class="comments-title">댓글 <span class="comments-count">{{ comments|length }}</span></h2>
+
+        {% if current_user.is_authenticated %}
+        <form class="comment-form" action="{{ url_for('comments.create_comment', post_id=post.id) }}" method="POST">
+            <textarea name="content" placeholder="댓글을 작성해주세요." required></textarea>
+            <button type="submit" class="btn btn-submit">댓글 작성</button>
+        </form>
+        {% endif %}
+
+        <div class="comments-list">
+            {% for comment in comments %}
+            {% if comment.parent_id is none %}
+            <div class="comment-thread">
+                <div class="comment-item">
+                    <div class="comment-header">
+                        <span class="comment-author">{{ comment.user.username }}</span>
+                        <span class="comment-date">{{ comment.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                    </div>
+                    <div class="comment-content">
+                        {{ comment.content }}
+                    </div>
+                    <div class="comment-actions">
+                        {% if current_user.is_authenticated %}
+                        <button type="button" class="btn-reply" data-comment-id="{{ comment.id }}">답글</button>
+                        {% endif %}
+                        {% if current_user.id == comment.user_id %}
+                        <form action="{{ url_for('comments.delete_comment', comment_id=comment.id) }}" method="POST"
+                            class="delete-comment-form">
+                            <button type="submit" class="btn-delete-comment"
+                                onclick="return confirm('댓글을 삭제하시겠습니까?')">삭제</button>
+                        </form>
+                        {% endif %}
+                    </div>
+
+                    <!-- 답글 폼 -->
+                    <div class="reply-form-container" id="reply-form-{{ comment.id }}" style="display: none;">
+                        <form action="{{ url_for('comments.create_reply', post_id=post.id, parent_id=comment.id) }}"
+                            method="POST">
+                            <textarea name="content" placeholder="답글을 작성해주세요." required></textarea>
+                            <div class="reply-form-actions">
+                                <button type="button" class="btn-cancel-reply"
+                                    onclick="hideReplyForm({{ comment.id }})">취소</button>
+                                <button type="submit" class="btn-submit-reply">답글 작성</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- 답글 목록 -->
+                    <div class="replies-list">
+                        {% for reply in comments %}
+                        {% if reply.parent_id == comment.id %}
+                        <div class="reply-item">
+                            <div class="comment-header">
+                                <span class="comment-author">{{ reply.user.username }}</span>
+                                <span class="comment-date">{{ reply.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                            </div>
+                            <div class="comment-content">
+                                {{ reply.content }}
+                            </div>
+                            <div class="comment-actions">
+                                {% if current_user.id == reply.user_id %}
+                                <form action="{{ url_for('comments.delete_comment', comment_id=reply.id) }}"
+                                    method="POST" class="delete-comment-form">
+                                    <button type="submit" class="btn-delete-comment"
+                                        onclick="return confirm('답글을 삭제하시겠습니까?')">삭제</button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        document.querySelectorAll(".btn-reply").forEach(button => {
+            button.addEventListener("click", (event) => {
+                const commentId = event.target.getAttribute("data-comment-id");
+                showReplyForm(commentId);
+            });
+        });
+    });
+
+    function showReplyForm(commentId) {
+        document.querySelectorAll(".reply-form-container").forEach(form => {
+            form.style.display = "none";
+        });
+
+        const form = document.getElementById("reply-form-" + commentId);
+        if (form) {
+            form.style.display = "block";
+            form.querySelector("textarea").focus();
+        }
+    }
+
+    function hideReplyForm(commentId) {
+        const form = document.getElementById("reply-form-" + commentId);
+        if (form) {
+            form.style.display = "none";
+        }
+    }
+</script>
+{% endblock %}

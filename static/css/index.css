@@ -1,0 +1,221 @@
+/* index.css */
+
+/* Main container */
+.home-container {
+    position: relative;
+    z-index: 2;
+    width: 80%;
+    margin: 0 auto;
+    padding: 40px 0;
+    margin-top: 60px;
+}
+
+/* Welcome section */
+.welcome-container {
+    text-align: center;
+    margin-bottom: 40px;
+    opacity: 0;
+    transform: translateY(-50px);
+    animation: fadeInDown 1s forwards;
+    animation-delay: 0.5s;
+}
+
+.welcome-title {
+    font-size: 36px;
+    font-weight: bold;
+    color: white;
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.658);
+}
+
+.welcome-description {
+    font-size: 18px;
+    color: #ffffff;
+    margin-bottom: 20px;
+    text-shadow: 0 0 8px rgb(255, 255, 255);
+}
+
+/* Image link */
+.image-link {
+    display: flex;
+    justify-content: center;
+    margin: 20px 0;
+}
+
+.image-link img {
+    max-width: 200px;
+    height: auto;
+    transition: transform 0.3s ease;
+    cursor: pointer;
+}
+
+.image-link img:hover {
+    transform: scale(1.05);
+}
+
+/* Posts section */
+.posts-container {
+    margin-bottom: 40px;
+    opacity: 0;
+    transform: translateY(-50px);
+    animation: fadeInDown 1s forwards;
+    animation-delay: 1s;
+    flex: 1;
+    width: 70%;
+    margin: 0 auto 40px;
+}
+
+.popular-posts {
+    background-color: rgba(255, 255, 255, 0.95);
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    position: relative;
+    backdrop-filter: blur(10px);
+}
+
+.section-title {
+    font-size: 24px;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 20px;
+}
+
+.posts-list {
+    list-style: none;
+    padding: 0;
+}
+
+.post-link {
+    display: block;
+    font-size: 18px;
+    color: #333;
+    text-decoration: none;
+    margin: 10px 0;
+    transition: all 0.3s ease;
+    padding: 8px;
+    border-radius: 4px;
+}
+
+.post-link:hover {
+    color: #2d87f0;
+    background-color: rgba(45, 135, 240, 0.1);
+}
+
+/* News section */
+.news-container {
+    display: flex;
+    justify-content: space-between;
+    opacity: 0;
+    transform: translateY(-50px);
+    animation: fadeInDown 1s forwards;
+    animation-delay: 1.5s;
+    flex: 1;
+    width: 70%;
+    margin: 0 auto;
+}
+
+.recent-news {
+    background-color: rgba(255, 255, 255, 0.95);
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    position: relative;
+    backdrop-filter: blur(10px);
+}
+
+.news-list {
+    list-style: none;
+    padding: 0;
+}
+
+.news-link {
+    display: block;
+    font-size: 18px;
+    color: #333;
+    text-decoration: none;
+    margin: 10px 0;
+    transition: all 0.3s ease;
+    padding: 8px;
+    border-radius: 4px;
+}
+
+.news-link:hover {
+    color: #f44336;
+    background-color: rgba(244, 67, 54, 0.1);
+}
+
+/* More button */
+.more-button {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background-color: rgba(45, 135, 240, 0.9);
+    color: white;
+    padding: 8px 16px;
+    text-decoration: none;
+    text-align: center;
+    border-radius: 5px;
+    transition: all 0.3s ease;
+    font-size: 14px;
+}
+
+.more-button:hover {
+    background-color: #1d64d3;
+    transform: translateY(-2px);
+}
+
+/* Animations */
+@keyframes fadeInDown {
+    0% {
+        opacity: 0;
+        transform: translateY(-50px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+    .home-container {
+        width: 90%;
+        padding: 20px;
+        margin-top: 40px;
+    }
+
+    .news-container {
+        flex-direction: column;
+        margin-bottom: 20px;
+        width: 100%;
+    }
+
+    .posts-container {
+        margin-bottom: 20px;
+        width: 100%;
+    }
+
+    .more-button {
+        position: static;
+        margin-top: 20px;
+        display: block;
+        width: fit-content;
+    }
+
+    .welcome-title {
+        font-size: 28px;
+    }
+
+    .welcome-description {
+        font-size: 16px;
+    }
+
+    .image-link img {
+        max-width: 150px;
+    }
+}
+
+[data-theme="dark"] .more-button {
+    color: #fff;
+}
