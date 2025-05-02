@@ -1,0 +1,60 @@
+/* 다크 모드 토글 스위치 */
+.dark-mode-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.dark-mode-toggle input[type="checkbox"] {
+    display: none;
+}
+
+/* 다크모드 스위치 스타일 */
+.switch {
+    position: relative;
+    width: 60px;
+    height: 30px;
+    background-color: #ddd;
+    border-radius: 30px;
+    transition: background-color 0.3s ease;
+}
+
+.switch .slider {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 24px;
+    height: 24px;
+    background-color: white;
+    border-radius: 50%;
+    transition: transform 0.3s ease;
+}
+
+/* 다크 모드 활성화 시 */
+input[type="checkbox"]:checked + .switch {
+    background-color: #333;
+}
+
+input[type="checkbox"]:checked + .switch .slider {
+    transform: translateX(30px); /* 원이 오른쪽으로 이동 */
+}
+
+/* Dark Mode */
+body.dark-mode {
+    background-color: #121212;
+    color: #e0e0e0;
+}
+
+body.dark-mode a {
+    color: #bb86fc;
+}
+
+body.dark-mode header {
+    background-color: #1e1e1e;
+}
+
+body.dark-mode .nav-links a.active {
+    color: #bb86fc;
+    border-bottom: 2px solid #bb86fc;
+}

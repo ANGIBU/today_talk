@@ -1,0 +1,55 @@
+{% extends "layout.html" %}
+
+{% block title %}글 작성 - PanArchive{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/posts_create.css') }}">
+
+<div class="container">
+    <h1 class="page-title">게시글 작성</h1>
+    <form method="POST" action="{{ url_for('posts.create_post') }}" enctype="multipart/form-data">
+        
+        <!-- 카테고리 선택 -->
+        <label for="category">카테고리:</label>
+        <select id="category" name="category" required>
+            <option value="humor">유머</option>
+            <option value="free">자유</option>
+            <option value="info">정보</option>
+        </select>
+        <br>
+        
+        <!-- 제목 입력 -->
+        <label for="title">제목:</label>
+        <input type="text" id="title" name="title" required>
+        <br>
+        
+        <!-- 내용 입력 -->
+        <label for="content">내용:</label>
+        <textarea id="content" name="content" required></textarea>
+        <br>
+        
+        <!-- 파일 업로드 -->
+        <label for="file">파일 업로드:</label>
+        <input type="file" id="file" name="file" multiple>
+        <button type="button" id="addFile">파일 추가</button>
+        <br>
+        
+        <!-- 파일 목록 -->
+        <div id="file-list">
+            <p>업로드된 파일 없음</p>
+        </div>
+        
+        <button type="submit" class="btn btn-primary">작성하기</button>
+    </form>
+</div>
+
+<script>
+    document.getElementById("addFile").addEventListener("click", function() {
+        let fileInput = document.createElement("input");
+        fileInput.type = "file";
+        fileInput.name = "file";
+        fileInput.classList.add("file-upload");
+        document.getElementById("file-list").appendChild(fileInput);
+    });
+</script>
+{% endblock %}

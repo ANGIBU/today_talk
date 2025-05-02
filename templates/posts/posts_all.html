@@ -1,0 +1,93 @@
+{% extends "layout.html" %}
+
+{% block title %}전체 게시글{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/posts_all.css') }}">
+
+<div class="container">
+    <h1 class="page-title">전체 게시글</h1>
+
+    <div class="button-wrapper">
+        <a href="{{ url_for('posts.create_post') }}" class="btn btn-primary">글쓰기</a>
+    </div>
+
+    <div class="post-list-wrapper">
+        <div class="post-header">
+            <span class="post-title-header">제목</span>
+            <div class="header-divider"></div>
+            <span class="post-author-header">작성자</span>
+            <div class="header-divider"></div>
+            <span class="post-views-header">조회수</span>
+            <div class="header-divider"></div>
+            <span class="post-date-header">작성일</span>
+        </div>
+
+        <div class="post-list">
+            {% if posts.items %}
+            {% for post in posts.items %}
+            <div class="post-item">
+                <a href="{{ url_for('posts.detail_post', post_id=post.id) }}" class="post-title">
+                    <div class="post-title-content">
+                        {% if post.images %}
+                        <img src="{{ url_for('static', filename='uploads/' + post.images[0]) }}" alt="썸네일"
+                            class="post-thumbnail">
+                        {% endif %}
+                        {{ post.title }}
+                        <span class="comment-count">[{{ post.comments|length }}]</span>
+                        <span class="category-tag" data-category="{{ post.category }}">
+                            {% if post.category == 'humor' %}
+                            [유머]
+                            {% elif post.category == 'info' %}
+                            [정보]
+                            {% elif post.category == 'free' %}
+                            [자유]
+                            {% endif %}
+                        </span>
+                    </div>
+                </a>
+                <div class="content-divider"></div>
+                <span class="post-author">{{ post.user.username }}</span>
+                <div class="content-divider"></div>
+                <span class="post-views">{{ post.views or 0 }}</span>
+                <div class="content-divider"></div>
+                <span class="post-date">{{ post.created_at.strftime('%Y-%m-%d') }}</span>
+            </div>
+            {% endfor %}
+            {% else %}
+            <div class="no-posts">
+                <p>등록된 게시글이 없습니다.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if posts.pages > 1 %}
+    <div class="pagination">
+        {% if posts.page > 1 %}
+        <a href="{{ url_for('posts.get_posts', category='all', page=1) }}" class="btn btn-secondary">&laquo;</a>
+        <a href="{{ url_for('posts.get_posts', category='all', page=posts.page - 1) }}"
+            class="btn btn-secondary">&lt;</a>
+        {% endif %}
+
+        {% set start_page = 1 if posts.page - 2 < 1 else posts.page - 2 %} {% set end_page=posts.pages if posts.page +
+            2> posts.pages else posts.page + 2 %}
+
+            {% for p in range(start_page, end_page + 1) %}
+            {% if p == posts.page %}
+            <span class="btn btn-secondary active">{{ p }}</span>
+            {% else %}
+            <a href="{{ url_for('posts.get_posts', category='all', page=p) }}" class="btn btn-secondary">{{ p }}</a>
+            {% endif %}
+            {% endfor %}
+
+            {% if posts.page < posts.pages %} <a
+                href="{{ url_for('posts.get_posts', category='all', page=posts.page + 1) }}" class="btn btn-secondary">
+                &gt;</a>
+                <a href="{{ url_for('posts.get_posts', category='all', page=posts.pages) }}"
+                    class="btn btn-secondary">&raquo;</a>
+                {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

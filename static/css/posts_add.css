@@ -1,0 +1,155 @@
+/* 게시글 작성 페이지 스타일 */
+.container {
+    max-width: 800px;
+    margin: 40px auto;
+    padding: 30px;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 12px;
+    box-shadow: 0px 4px 15px rgba(70, 70, 140, 0.15);
+}
+
+.page-title {
+    font-size: 28px;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 20px;
+    color: rgba(25, 25, 112, 0.9);
+}
+
+label {
+    display: block;
+    font-weight: bold;
+    margin-top: 15px;
+    font-size: 16px;
+    color: rgba(70, 70, 140, 0.9);
+}
+
+input[type="text"],
+select,
+textarea {
+    width: 100%;
+    padding: 10px;
+    margin-top: 5px;
+    border-radius: 6px;
+    border: 1px solid rgba(70, 70, 140, 0.3);
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+input[type="text"]:focus,
+select:focus,
+textarea:focus {
+    border-color: rgba(70, 70, 140, 0.8);
+    outline: none;
+}
+
+textarea {
+    height: 150px;
+    resize: vertical;
+}
+
+/* 파일 업로드 스타일 */
+input[type="file"] {
+    display: block;
+    margin-top: 5px;
+    font-size: 14px;
+}
+
+.btn-primary {
+    background-color: rgba(70, 70, 140, 0.9);
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: rgba(40, 44, 110, 0.95);
+}
+
+/* 파일 업로드 영역 스타일 */
+.file-upload-section {
+    border: 2px dashed rgba(70, 70, 140, 0.3);
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 15px;
+    background: rgba(70, 70, 140, 0.05);
+}
+
+.file-upload-header {
+    margin-bottom: 15px;
+}
+
+.file-input-wrapper {
+    width: 100%;
+}
+
+#file-list {
+    margin-top: 15px;
+    background: white;
+    border-radius: 6px;
+    padding: 15px;
+    border: 1px solid rgba(70, 70, 140, 0.2);
+}
+
+.no-files {
+    text-align: center;
+    color: #666;
+    font-style: italic;
+}
+
+.file-item {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    border-bottom: 1px solid rgba(70, 70, 140, 0.1);
+    gap: 15px;
+}
+
+.file-item:last-child {
+    border-bottom: none;
+}
+
+.file-thumbnail {
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 4px;
+}
+
+.file-name {
+    flex-grow: 1;
+    font-size: 14px;
+    color: #444;
+}
+
+.file-actions {
+    display: flex;
+    gap: 10px;
+    margin-left: auto;
+}
+
+.btn-insert {
+    background-color: rgba(70, 70, 140, 0.9);
+    color: white;
+    padding: 5px 10px;
+    border: none;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.btn-delete {
+    background-color: #dc3545;
+    color: white;
+    padding: 5px 10px;
+    border: none;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.btn-insert:hover {
+    background-color: rgba(40, 44, 110, 0.95);
+}
+
+.btn-delete:hover {
+    background-color: #c82333;
+}

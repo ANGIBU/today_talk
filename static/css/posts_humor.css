@@ -1,0 +1,244 @@
+/* 유머 게시판 스타일링 */
+
+/* 전체 컨테이너 */
+.container {
+    max-width: 1200px;
+    margin: 40px auto;
+    padding: 30px;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 12px;
+    box-shadow: 0px 4px 15px rgba(70, 70, 140, 0.15);
+}
+
+/* 제목 및 설명 */
+.page-title {
+    font-size: 32px;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 20px;
+    color: rgba(25, 25, 112, 0.9);
+    letter-spacing: 0.5px;
+}
+
+.page-description {
+    text-align: center;
+    color: rgba(70, 70, 140, 0.8);
+    font-size: 16px;
+    margin-bottom: 30px;
+}
+
+/* 버튼 스타일 */
+.button-wrapper {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 25px;
+}
+
+.btn {
+    padding: 8px 16px;
+    border: none;
+    cursor: pointer;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    text-decoration: none;
+}
+
+.btn:hover {
+    text-decoration: none;
+}
+
+.btn-primary {
+    background-color: rgba(70, 70, 140, 0.9);
+    color: white;
+    text-decoration: none;
+}
+
+.btn-primary:hover {
+    background-color: rgba(40, 44, 110, 0.95);
+    text-decoration: none;
+}
+
+/* 게시글 리스트 스타일 */
+.post-list-wrapper {
+    border-radius: 8px;
+    overflow: hidden;
+    background-color: rgba(255, 255, 255, 0.98);
+    padding: 20px;
+    box-shadow: 0px 2px 10px rgba(70, 70, 140, 0.1);
+    margin-bottom: 15px;
+}
+
+.post-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    margin: 0 0 15px 0;
+    background-color: rgba(156, 136, 201, 0.1);
+    font-weight: bold;
+    border-radius: 6px;
+}
+
+.post-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* 구분선 스타일 */
+.header-divider,
+.content-divider {
+    width: 1px;
+    height: 20px;
+    background-color: rgba(156, 136, 201, 0.6);
+    margin: 0 10px;
+}
+
+.post-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 20px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.98);
+    border: 1px solid rgba(156, 136, 201, 0.2);
+    transition: all 0.2s ease;
+}
+
+.post-item:hover {
+    background-color: rgba(156, 136, 201, 0.05);
+    transform: translateX(3px);
+}
+
+/* 게시글 항목 스타일 */
+.post-title-header {
+    flex: 6.5;
+    color: #000;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.post-author-header {
+    flex: 1.5;
+    text-align: center;
+    color: #000;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.post-views-header {
+    flex: 1;
+    text-align: center;
+    color: #000;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.post-date-header {
+    flex: 1;
+    text-align: center;
+    color: #000;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.post-title {
+    flex: 6.5;
+    font-weight: 500;
+    color: #000;
+    text-decoration: none;
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* 썸네일 이미지 스타일 */
+.post-thumbnail {
+    width: 50px;
+    height: 50px;
+    border-radius: 4px;
+    object-fit: cover;
+    margin-right: 10px;
+}
+
+.post-title-content {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+}
+
+.post-title:hover {
+    color: rgba(156, 136, 201, 1);
+}
+
+.comment-count {
+    color: #9c88c9;
+    font-size: 14.5px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+}
+
+.post-author {
+    flex: 1.5;
+    text-align: center;
+    color: #000;
+    font-size: 14px;
+}
+
+.post-views {
+    flex: 1;
+    text-align: center;
+    color: #000;
+    font-size: 14px;
+}
+
+.post-date {
+    flex: 1;
+    text-align: center;
+    color: #000;
+    font-size: 14px;
+}
+
+/* 페이지네이션 스타일 */
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 20px;
+    gap: 5px;
+}
+
+.pagination a,
+.pagination span {
+    display: inline-block;
+    padding: 8px 12px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    color: rgba(156, 136, 201, 0.8);
+    transition: all 0.2s ease;
+    background: none;
+    border: 1px solid rgba(156, 136, 201, 0.2);
+}
+
+.pagination a:hover {
+    background-color: rgba(156, 136, 201, 0.05);
+}
+
+.pagination .active {
+    background-color: rgba(156, 136, 201, 0.9);
+    color: white;
+    border-color: rgba(156, 136, 201, 0.9);
+}
+
+.pagination .disabled {
+    color: rgba(156, 136, 201, 0.4);
+    pointer-events: none;
+    background: none;
+    border-color: rgba(156, 136, 201, 0.1);
+}

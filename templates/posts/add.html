@@ -1,0 +1,212 @@
+{% extends "layout.html" %}
+
+{% block title %}글 작성 - PanArchive{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/posts_add.css') }}">
+
+<div class="container">
+    <h1 class="page-title">게시글 작성</h1>
+    <form method="POST" action="{{ url_for('posts.create_post') }}" enctype="multipart/form-data">
+        <!-- 카테고리 선택 -->
+        <label for="category">카테고리:</label>
+        <select id="category" name="category" required>
+            <option value="humor">유머</option>
+            <option value="free">자유</option>
+            <option value="info">정보</option>
+        </select>
+        <br>
+
+        <!-- 제목 입력 -->
+        <label for="title">제목:</label>
+        <input type="text" id="title" name="title" required>
+        <br>
+
+        <!-- 내용 입력 -->
+        <label for="content">내용:</label>
+        <div id="editor" contenteditable="true" class="content-editable"></div>
+        <textarea id="content" name="content" style="display: none;"></textarea>
+        <br>
+
+        <!-- 숨겨진 이미지 URL 입력 필드 -->
+        <input type="hidden" id="image_url" name="image_url">
+
+        <!-- 파일 업로드 -->
+        <div class="file-upload-section">
+            <div class="file-upload-header">
+                <div class="file-input-wrapper">
+                    <label for="file">파일 업로드:</label>
+                    <input type="file" id="file" name="file" multiple accept="image/*">
+                </div>
+            </div>
+
+            <!-- 파일 목록 -->
+            <div id="file-list">
+                <p class="no-files">업로드된 파일 없음</p>
+            </div>
+        </div>
+
+        <button type="submit" class="submit-btn">작성하기</button>
+    </form>
+</div>
+
+<style>
+.content-editable {
+    border: 1px solid #ccc;
+    min-height: 300px;
+    padding: 10px;
+    margin-bottom: 10px;
+    overflow-y: auto;
+    background: white;
+}
+
+.content-editable img {
+    max-width: 100%;
+    height: auto;
+    margin: 10px 0;
+}
+
+.file-thumbnail {
+    max-width: 100px;
+    height: auto;
+    margin: 5px;
+}
+
+.file-actions {
+    margin: 5px 0;
+}
+
+.btn-insert, .btn-delete {
+    margin: 0 5px;
+    padding: 5px 10px;
+    cursor: pointer;
+}
+
+.submit-btn {
+    margin-top: 20px;
+    padding: 10px 20px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.submit-btn:hover {
+    background-color: #0056b3;
+}
+</style>
+
+<script>
+    const editor = document.getElementById('editor');
+    const contentTextarea = document.getElementById('content');
+    
+    // 폼 제출 전에 에디터 내용을 textarea에 복사
+    document.querySelector('form').addEventListener('submit', function(e) {
+        contentTextarea.value = editor.innerHTML;
+    });
+
+    document.getElementById('file').addEventListener('change', async function (e) {
+        const fileList = document.getElementById('file-list');
+        const noFiles = document.querySelector('.no-files');
+        const imageUrlInput = document.getElementById('image_url');
+
+        if (e.target.files.length > 0) {
+            if (noFiles) noFiles.style.display = 'none';
+
+            const file = e.target.files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Upload failed: ${response.status} ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                const imageUrl = data.url;
+                imageUrlInput.value = imageUrl;
+
+                // 이미지 미리보기 생성
+                const img = document.createElement('img');
+                img.className = 'file-thumbnail';
+                img.src = imageUrl;
+                
+                // 파일명
+                const fileName = document.createElement('span');
+                fileName.className = 'file-name';
+                fileName.textContent = file.name;
+
+                // 버튼 컨테이너
+                const actions = document.createElement('div');
+                actions.className = 'file-actions';
+
+                // 본문 삽입 버튼
+                const insertBtn = document.createElement('button');
+                insertBtn.type = 'button';
+                insertBtn.className = 'btn-insert';
+                insertBtn.textContent = '본문 삽입';
+                insertBtn.onclick = function () {
+                    insertImageAtCursor(imageUrl, file.name);
+                };
+
+                // 삭제 버튼
+                const deleteBtn = document.createElement('button');
+                deleteBtn.type = 'button';
+                deleteBtn.className = 'btn-delete';
+                deleteBtn.textContent = '삭제';
+                deleteBtn.onclick = async function () {
+                    try {
+                        await fetch(`/api/delete-upload?url=${encodeURIComponent(imageUrl)}`, {
+                            method: 'DELETE'
+                        });
+                        fileList.removeChild(img);
+                        fileList.removeChild(fileName);
+                        fileList.removeChild(actions);
+                    } catch (error) {
+                        console.error('파일 삭제 실패:', error);
+                    }
+                };
+
+                actions.appendChild(insertBtn);
+                actions.appendChild(deleteBtn);
+                fileList.appendChild(img);
+                fileList.appendChild(fileName);
+                fileList.appendChild(actions);
+            } catch (error) {
+                console.error('Upload error:', error);
+                alert('파일 업로드에 실패했습니다.');
+            }
+        }
+    });
+
+    // 커서 위치에 이미지 삽입 함수
+    function insertImageAtCursor(imageUrl, fileName) {
+        const img = document.createElement('img');
+        img.src = imageUrl;
+        img.alt = fileName;
+        
+        const selection = window.getSelection();
+        const range = selection.getRangeAt(0);
+        range.insertNode(img);
+        
+        // 이미지 다음에 줄바꿈 추가
+        const br = document.createElement('br');
+        img.parentNode.insertBefore(br, img.nextSibling);
+        
+        // 커서를 이미지 다음으로 이동
+        range.setStartAfter(br);
+        range.setEndAfter(br);
+        selection.removeAllRanges();
+        selection.addRange(range);
+        
+        // 에디터에 포커스
+        editor.focus();
+    }
+</script>
+{% endblock %}

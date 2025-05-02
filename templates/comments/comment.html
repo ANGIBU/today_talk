@@ -1,0 +1,25 @@
+<div class="comments-section">
+    <h2>댓글</h2>
+    <ul>
+        {% for comment in comments %}
+        <li class="comment-item">
+            <p>{{ comment.content }}</p>
+            <small>작성자: {{ comment.author }} | 작성일: {{ comment.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+            {% if comment.user_id == current_user.id %}
+            <div class="comment-actions">
+                <a href="{{ url_for('comments.edit', comment_id=comment.id) }}">수정</a>
+                <form method="POST" action="{{ url_for('comments.delete', comment_id=comment.id) }}" style="display:inline;">
+                    <button type="submit">삭제</button>
+                </form>
+            </div>
+            {% endif %}
+        </li>
+        {% else %}
+        <p>아직 댓글이 없습니다. 첫 번째 댓글을 작성해보세요!</p>
+        {% endfor %}
+    </ul>
+    <form method="POST" action="{{ url_for('comments.create', post_id=post.id) }}">
+        <textarea name="content" rows="3" placeholder="댓글을 작성하세요..." required></textarea>
+        <button type="submit">댓글 작성</button>
+    </form>
+</div>
