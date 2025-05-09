@@ -1,18 +1,15 @@
-# config\production.py
+# config/production.py
 import os
 from config.base import Config
 
 class ProductionConfig(Config):
     DEBUG = False
+    
+    # Docker 환경에 맞게 수정
     SQLALCHEMY_DATABASE_URI = os.getenv(
         "SQLALCHEMY_DATABASE_URI",
-        "mysql+pymysql://facecom:dks12345@10.0.66.15/PanArchive",
+        "mysql+pymysql://livon:dks12345@mysql:3306/today_talk"
     )
-    
-    # SQLALCHEMY_DATABASE_URI = os.getenv(
-    #     "SQLALCHEMY_DATABASE_URI",
-    #     "mysql+pymysql://facecom2000:dks12345@192.168.219.43/PanArchive",
-    # )
     
     MAIL_DEBUG = False
     SESSION_COOKIE_SECURE = True

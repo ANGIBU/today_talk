@@ -1,3 +1,4 @@
+# app.py
 import os
 import sys
 import logging
@@ -33,7 +34,7 @@ except Exception as e:
 
 
 def create_app():
-    """Flask 애플리케이션 생성 함수""" 
+    """Flask 애플리케이션 생성 함수"""
     app = Flask(__name__)
 
     # 로그 설정
@@ -41,7 +42,7 @@ def create_app():
     app.logger.propagate = False  # 중복 로그 방지
 
     # 환경 설정 로드
-    env = os.getenv("FLASK_ENV", "development")
+    env = os.getenv("FLASK_ENV", "production")  # 기본값을 production으로 변경
     if env == "production":
         app.config.from_object("config.production.ProductionConfig")
     else:
@@ -77,6 +78,9 @@ def create_app():
 
     # 업로드 폴더 설정 추가
     app.config["UPLOAD_FOLDER"] = "static/uploads"
+    
+    # 업로드 폴더가 없으면 생성
+    os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
 
     # 데이터베이스 연결 테스트
     try:
@@ -85,6 +89,29 @@ def create_app():
             print("[SUCCESS] 데이터베이스 연결 성공")
     except Exception as e:
         print(f"[ERROR] 데이터베이스 연결 실패: {e}")
+        # 연결 오류 발생 시 상세 정보 출력
+        print(f"[INFO] 데이터베이스 URI: {app.config.get('SQLALCHEMY_DATABASE_URI', '설정되지 않음')}")
+        
+        # 데이터베이스 존재 여부 확인 시도
+        try:
+            # URI에서 사용자 정보와 호스트 정보만 추출
+            uri = app.config.get('SQLALCHEMY_DATABASE_URI', '')
+            if uri:
+                # URI 형식: mysql+pymysql://user:password@host:port/database
+                uri_parts = uri.split('/')
+                base_uri = '/'.join(uri_parts[:-1]) + '/'
+                
+                # 기본 URI로 연결 시도
+                from sqlalchemy import create_engine
+                engine = create_engine(base_uri)
+                with engine.connect() as conn:
+                    result = conn.execute(text("SHOW DATABASES"))
+                    print("[INFO] 사용 가능한 데이터베이스 목록:")
+                    for row in result:
+                        print(f"  - {row[0]}")
+        except Exception as inner_e:
+            print(f"[ERROR] 데이터베이스 연결 진단 실패: {inner_e}")
+        
         sys.exit(1)
 
     return app
@@ -142,4 +169,6 @@ if __name__ == "__main__":
     scraper_thread.start()
 
     print("[INFO] 애플리케이션 실행 준비 완료")
-    app.run(host="0.0.0.0", port=5000, use_reloader=False)
+    # 호스트와 포트 설정 변경 - 환경변수로 포트 설정 가능하도록 수정
+    port = int(os.getenv("PORT", 5003))
+    app.run(host="0.0.0.0", port=port, debug=False, use_reloader=False)

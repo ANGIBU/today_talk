@@ -1,29 +1,29 @@
 # models/__init__.py
+from db import db
 from flask_migrate import Migrate
-from sqlalchemy import text
-from db import db  # ✅ `db.py`에서 가져오도록 변경
 
-migrate = None  # Flask-Migrate 전역 변수
+# 전역 변수
+migrate = None
 
 def init_db(app):
     """
-    Flask 앱과 SQLAlchemy를 초기화하고,
-    Migrate를 설정합니다.
+    Flask 애플리케이션과 SQLAlchemy를 초기화하고 마이그레이션 설정
     """
-    global migrate  # 전역 변수 `migrate` 사용
+    global migrate
+    
+    # DB 초기화
     db.init_app(app)
+    
+    # 마이그레이션 설정
     migrate = Migrate(app, db)
-
-    # 데이터베이스 연결 테스트
-    with app.app_context():
-        try:
-            db.session.execute(text('SELECT 1'))  # 연결 테스트 쿼리
-            print("✅ 데이터베이스 연결 성공")
-        except Exception as e:
-            print(f"❌ 데이터베이스 연결 실패: {e}")
-
+    
     # 모델 임포트 (순환 참조 방지)
     from models.user import User
     from models.post import Post
     from models.comment import Comment
-    from models.news import News  # 🔹 News 모델 추가 (존재하면)
+    from models.news import News
+    from models.contact import Contact
+    from models.login_attempts import LoginAttempt
+    from models.captcha import Captcha
+    
+    return db

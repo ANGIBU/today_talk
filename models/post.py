@@ -5,30 +5,25 @@ from datetime import datetime
 
 class Post(db.Model):
     __tablename__ = "posts"
-
+    
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(255), nullable=False)
     content = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(
-        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
-    )
-    user_id = db.Column(
-        db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False
-    )
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     likes = db.Column(db.Integer, default=0, nullable=False)
     views = db.Column(db.Integer, default=0, nullable=False)
     category = db.Column(db.String(50), nullable=False)
-
-    # User relationship
+    images = db.Column(db.JSON, nullable=True)  # 이미지 파일명 목록 저장
+    
+    # 관계 설정
     user = relationship("User", back_populates="posts")
-    # Comments relationship
     comments = relationship("Comment", back_populates="post", cascade="all, delete-orphan")
-
+    
     def __repr__(self):
-        return f"<Post {self.title} - Category: {self.category} - Likes: {self.likes} - Views: {self.views}>"
-
-    # 게시글 정보를 딕셔너리로 변환하는 메서드 추가
+        return f"<Post {self.id}: {self.title} - Category: {self.category}>"
+    
     def to_dict(self):
         return {
             "id": self.id,
@@ -40,5 +35,7 @@ class Post(db.Model):
             "likes": self.likes,
             "views": self.views,
             "category": self.category,
-            "comment_count": len(self.comments)  # 댓글 수 추가
+            "images": self.images,
+            "comment_count": len(self.comments) if self.comments else 0,
+            "author": self.user.username if self.user else None
         }

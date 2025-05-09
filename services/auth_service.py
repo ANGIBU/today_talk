@@ -1,117 +1,103 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
-from flask_login import login_user, logout_user, login_required
+# services/auth_service.py
+from werkzeug.security import generate_password_hash, check_password_hash
 from models.user import User
+from models.login_attempts import LoginAttempt
 from db import db
-from services.auth_utils import register_user, authenticate_user, send_reset_email, check_duplicate
-import logging
+from datetime import datetime
 
-# 로깅 설정
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-auth_blueprint = Blueprint('auth', __name__, url_prefix='/auth')
-
-# 로그인 라우트
-@auth_blueprint.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        username = request.form.get('username', '').strip()
-        password = request.form.get('password', '').strip()
-
-        if not username or not password:
-            logger.error("Username or password not provided in login attempt.")
-            flash('아이디와 비밀번호를 모두 입력하세요.', 'danger')
-            return render_template('auth/login.html')
-
-        user = authenticate_user(username, password)
-        if user:
-            login_user(user)
-            flash('로그인 성공!', 'success')
-            logger.info(f"User {username} logged in successfully.")
-            # 로그인 후 이전 페이지로 리다이렉트 (next 파라미터 활용)
-            next_page = request.args.get('next')
-            return redirect(next_page or url_for('home.index'))
-        else:
-            flash('아이디 또는 비밀번호가 올바르지 않습니다.', 'danger')
-            logger.warning(f"Failed login attempt for username: {username}")
-    return render_template('auth/login.html')
-
-# 회원가입 라우트
-@auth_blueprint.route('/register', methods=['GET', 'POST'])
-def register():
-    if request.method == 'POST':
-        try:
-            email = request.form.get('email', '').strip()
-            username = request.form.get('username', '').strip()
-            password = request.form.get('password', '').strip()
-            nickname = request.form.get('nickname', '').strip()
-
-            if not email or not username or not password or not nickname:
-                logger.error("Missing required registration fields.")
-                flash('모든 필드를 입력해주세요.', 'danger')
-                return redirect(url_for('auth.register'))
-
-            if len(username) < 3 or len(password) < 6 or len(nickname) < 3:
-                flash('아이디, 비밀번호 또는 닉네임이 너무 짧습니다.', 'danger')
-                return redirect(url_for('auth.register'))
-
-            result, message = register_user(email, username, password, nickname)
-
-            if result:
-                flash('회원가입이 완료되었습니다. 로그인하세요.', 'success')
-                logger.info(f"User {email} registered successfully.")
-                return redirect(url_for('auth.login'))
-            else:
-                flash(message, 'danger')
-                logger.warning(f"Registration failed for email: {email} - {message}")
-                return redirect(url_for('auth.register'))
-
-        except Exception as e:
-            logger.error(f"Error during registration: {e}")
-            flash('회원가입 중 오류가 발생했습니다. 다시 시도해주세요.', 'danger')
-            return redirect(url_for('auth.register'))
-    return render_template('auth/register.html')
-
-# 로그아웃 라우트
-@auth_blueprint.route('/logout')
-@login_required
-def logout():
-    logout_user()
-    flash('로그아웃되었습니다.', 'success')
-    logger.info("User logged out successfully.")
-    return redirect(request.referrer or url_for('home.index'))
-
-# 비밀번호 재설정 라우트
-@auth_blueprint.route('/reset_password', methods=['GET', 'POST'])
-def reset_password():
-    if request.method == 'POST':
-        email = request.form.get('email', '').strip()
-
-        if not email or '@' not in email:
-            flash('유효한 이메일 주소를 입력하세요.', 'danger')
-            logger.error("Invalid email format provided for password reset.")
-            return render_template('auth/reset_password.html')
-
-        if send_reset_email(email):
-            flash('비밀번호 재설정 링크가 이메일로 전송되었습니다.', 'info')
-            logger.info(f"Password reset email sent to: {email}")
-        else:
-            flash('입력한 이메일을 찾을 수 없습니다.', 'danger')
-            logger.warning(f"Failed to send password reset email to: {email}")
-    return render_template('auth/reset_password.html')
-
-# 중복 확인 라우트
-@auth_blueprint.route('/check_duplicate', methods=['GET'])
-def check_duplicate_route():
-    field = request.args.get('field')
-    value = request.args.get('value')
-
-    if not field or not value:
-        return jsonify({'success': False, 'message': 'Invalid parameters'}), 400
-
+def register_user(email, username, password, nickname):
+    """
+    새로운 사용자 등록
+    """
+    # 이메일 중복 확인
+    if User.query.filter_by(email=email).first():
+        return False, "이미 등록된 이메일입니다."
+    
+    # 아이디 중복 확인
+    if User.query.filter_by(username=username).first():
+        return False, "이미 등록된 아이디입니다."
+    
+    # 닉네임 중복 확인
+    if nickname and User.query.filter_by(nickname=nickname).first():
+        return False, "이미 사용 중인 닉네임입니다."
+    
     try:
-        is_duplicate = check_duplicate(field, value)
-        return jsonify({'success': True, 'is_duplicate': is_duplicate})
-    except ValueError as e:
-        logger.error(f"Invalid field for duplicate check: {field}")
-        return jsonify({'success': False, 'message': str(e)}), 400
+        # 새 사용자 생성
+        new_user = User(
+            email=email,
+            username=username,
+            password_hash=generate_password_hash(password),
+            nickname=nickname or username  # 닉네임이 없으면 아이디를 닉네임으로 사용
+        )
+        
+        db.session.add(new_user)
+        db.session.commit()
+        return True, "회원가입 성공!"
+    except Exception as e:
+        db.session.rollback()
+        return False, f"회원가입 실패: {str(e)}"
+
+def authenticate_user(username, password, ip_address=None, user_agent=None):
+    """
+    사용자 인증
+    """
+    user = User.query.filter_by(username=username).first()
+    success = False
+    
+    if user and check_password_hash(user.password_hash, password):
+        success = True
+        
+    # 로그인 시도 기록
+    if ip_address:
+        login_attempt = LoginAttempt(
+            user_id=user.id if user else None,
+            username=username,
+            ip_address=ip_address,
+            success=success,
+            user_agent=user_agent
+        )
+        db.session.add(login_attempt)
+        db.session.commit()
+        
+    return user if success else None
+
+def check_duplicate(field, value):
+    """
+    중복 확인 (아이디, 이메일, 닉네임)
+    """
+    if field not in ['username', 'email', 'nickname']:
+        raise ValueError('허용되지 않은 필드입니다.')
+    
+    # 필드별 중복 확인
+    filter_condition = {field: value}
+    exists = User.query.filter_by(**filter_condition).first() is not None
+    return exists
+
+def send_reset_email(email):
+    """
+    비밀번호 재설정 이메일 전송
+    """
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        return False
+    
+    # 비밀번호 재설정 토큰 생성 및 이메일 전송 로직
+    # (실제 이메일 전송 로직은 구현 필요)
+    
+    return True
+
+def reset_password(user_id, new_password):
+    """
+    비밀번호 재설정
+    """
+    user = User.query.get(user_id)
+    if not user:
+        return False, "사용자를 찾을 수 없습니다."
+    
+    try:
+        user.password_hash = generate_password_hash(new_password)
+        db.session.commit()
+        return True, "비밀번호가 성공적으로 변경되었습니다."
+    except Exception as e:
+        db.session.rollback()
+        return False, f"비밀번호 변경 실패: {str(e)}"
