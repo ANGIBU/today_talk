@@ -8,59 +8,68 @@ from db import db
 from sqlalchemy import desc, func, or_
 from datetime import datetime
 
-# Blueprint 이름을 posts_blueprint로 변경
 posts_blueprint = Blueprint('posts', __name__)
 
 @posts_blueprint.route('/posts/all')
 def all_posts():
-    try:
-        page = request.args.get('page', 1, type=int)
-        per_page = 10
-        
-        # 최신순 정렬
+    """전체 게시글 목록 표시"""
+    page = request.args.get('page', 1, type=int)
+    per_page = 10
+    
+    # 최신순 정렬
+    posts = Post.query.filter_by(is_deleted=False).order_by(
+        desc(Post.created_at)
+    ).paginate(page=page, per_page=per_page, error_out=False)
+    
+    return render_template('posts/all.html', posts=posts)
+
+# 'get_posts' 함수 추가 - 템플릿에서 참조하는 함수
+@posts_blueprint.route('/posts/<category>')
+def get_posts(category):
+    """카테고리별 게시글 목록 표시"""
+    page = request.args.get('page', 1, type=int)
+    per_page = 10
+    
+    # 카테고리가 'all'인 경우 모든 게시글 표시
+    if category == 'all':
         posts = Post.query.filter_by(is_deleted=False).order_by(
             desc(Post.created_at)
         ).paginate(page=page, per_page=per_page, error_out=False)
-        
-        return render_template('posts/all.html', posts=posts)
-    except Exception as e:
-        # 로그 기록
-        current_app.logger.error(f"포스트 목록 조회 중 오류: {str(e)}")
-        return render_template('error.html', error="포스트 목록을 불러오는 중 오류가 발생했습니다."), 500
+    else:
+        posts = Post.query.filter_by(
+            category=category,
+            is_deleted=False
+        ).order_by(desc(Post.created_at)).paginate(page=page, per_page=per_page, error_out=False)
+    
+    return render_template(f'posts/{category}.html', posts=posts, category=category)
 
 @posts_blueprint.route('/posts/popular')
 def popular_posts():
-    try:
-        # 인기순(좋아요 기준) 정렬
-        posts = Post.query.filter_by(is_deleted=False).order_by(
-            desc(Post.likes_count), desc(Post.created_at)
-        ).limit(20).all()
-        
-        return render_template('posts/popular.html', posts=posts)
-    except Exception as e:
-        current_app.logger.error(f"인기 포스트 목록 조회 중 오류: {str(e)}")
-        return render_template('error.html', error="인기 포스트 목록을 불러오는 중 오류가 발생했습니다."), 500
+    """인기 게시글 목록 표시"""
+    # 인기순(좋아요 기준) 정렬
+    posts = Post.query.filter_by(is_deleted=False).order_by(
+        desc(Post.likes_count), desc(Post.created_at)
+    ).limit(20).all()
+    
+    return render_template('posts/popular.html', posts=posts)
 
 @posts_blueprint.route('/posts/<int:post_id>')
 def view_post(post_id):
-    try:
-        post = Post.query.get_or_404(post_id)
+    """게시글 상세 페이지 표시"""
+    post = Post.query.get_or_404(post_id)
+    
+    # 삭제된 게시물인 경우 404 반환
+    if post.is_deleted:
+        abort(404)
         
-        # 삭제된 게시물인 경우 404 반환
-        if post.is_deleted:
-            abort(404)
-            
-        # 조회수 증가 (중복 방지를 위한 세션 체크 로직 생략)
-        post.views_count += 1
-        db.session.commit()
-        
-        # 댓글 불러오기
-        comments = Comment.query.filter_by(post_id=post_id, is_deleted=False).order_by(Comment.created_at).all()
-        
-        return render_template('posts/detail.html', post=post, comments=comments)
-    except Exception as e:
-        current_app.logger.error(f"포스트 상세 조회 중 오류: {str(e)}")
-        return render_template('error.html', error="게시물을 불러오는 중 오류가 발생했습니다."), 500
+    # 조회수 증가 (중복 방지를 위한 세션 체크 로직 생략)
+    post.views_count += 1
+    db.session.commit()
+    
+    # 댓글 불러오기
+    comments = Comment.query.filter_by(post_id=post_id, is_deleted=False).order_by(Comment.created_at).all()
+    
+    return render_template('posts/detail.html', post=post, comments=comments)
 
 @posts_blueprint.route('/posts/create', methods=['GET', 'POST'])
 @login_required

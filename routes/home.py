@@ -3,7 +3,7 @@ from flask import Blueprint, render_template, current_app
 from models.post import Post
 from models.news import News
 from datetime import datetime, timedelta
-from sqlalchemy import desc
+from sqlalchemy import desc, text
 import logging
 
 # 로깅 설정
@@ -22,10 +22,31 @@ def index():
             Post.created_at >= seven_days_ago
         ).order_by(Post.views.desc()).limit(5).all()
         
-        # 최신 뉴스
-        recent_news = News.query.order_by(
-            News.published_at.desc()
-        ).limit(5).all()
+        # 최신 뉴스 - 필드 오류 방지를 위한 처리
+        try:
+            # 기본 컬럼만 선택하여 쿼리
+            recent_news = News.query.with_entities(
+                News.id, News.title, News.content, News.source, 
+                News.thumbnail, News.source_url, News.published_at, 
+                News.category, News.views
+            ).order_by(
+                desc(News.published_at)
+            ).limit(5).all()
+        except Exception as db_error:
+            logger.error(f"뉴스 쿼리 오류, 기본 SQL로 시도: {db_error}")
+            # SQLAlchemy Core로 직접 쿼리 실행
+            try:
+                result = current_app.db.session.execute(text("""
+                    SELECT id, title, content, source, thumbnail, source_url, 
+                           published_at, category, views 
+                    FROM news 
+                    ORDER BY published_at DESC 
+                    LIMIT 5
+                """))
+                recent_news = [dict(row) for row in result]
+            except Exception as sql_error:
+                logger.error(f"SQL 직접 쿼리도 실패: {sql_error}")
+                recent_news = []
         
         return render_template(
             'home/index.html',
