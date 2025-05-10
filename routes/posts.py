@@ -1,5 +1,5 @@
 # routes/posts.py
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, abort
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, abort, current_app
 from flask_login import login_required, current_user
 from models.post import Post
 from models.comment import Comment
@@ -8,9 +8,10 @@ from db import db
 from sqlalchemy import desc, func, or_
 from datetime import datetime
 
-posts_bp = Blueprint('posts', __name__)
+# Blueprint 이름을 posts_blueprint로 변경
+posts_blueprint = Blueprint('posts', __name__)
 
-@posts_bp.route('/posts/all')
+@posts_blueprint.route('/posts/all')
 def all_posts():
     try:
         page = request.args.get('page', 1, type=int)
@@ -24,12 +25,10 @@ def all_posts():
         return render_template('posts/all.html', posts=posts)
     except Exception as e:
         # 로그 기록
-        current_app = posts_bp.current_app
-        if current_app:
-            current_app.logger.error(f"포스트 목록 조회 중 오류: {str(e)}")
+        current_app.logger.error(f"포스트 목록 조회 중 오류: {str(e)}")
         return render_template('error.html', error="포스트 목록을 불러오는 중 오류가 발생했습니다."), 500
 
-@posts_bp.route('/posts/popular')
+@posts_blueprint.route('/posts/popular')
 def popular_posts():
     try:
         # 인기순(좋아요 기준) 정렬
@@ -39,12 +38,10 @@ def popular_posts():
         
         return render_template('posts/popular.html', posts=posts)
     except Exception as e:
-        current_app = posts_bp.current_app
-        if current_app:
-            current_app.logger.error(f"인기 포스트 목록 조회 중 오류: {str(e)}")
+        current_app.logger.error(f"인기 포스트 목록 조회 중 오류: {str(e)}")
         return render_template('error.html', error="인기 포스트 목록을 불러오는 중 오류가 발생했습니다."), 500
 
-@posts_bp.route('/posts/<int:post_id>')
+@posts_blueprint.route('/posts/<int:post_id>')
 def view_post(post_id):
     try:
         post = Post.query.get_or_404(post_id)
@@ -62,12 +59,10 @@ def view_post(post_id):
         
         return render_template('posts/detail.html', post=post, comments=comments)
     except Exception as e:
-        current_app = posts_bp.current_app
-        if current_app:
-            current_app.logger.error(f"포스트 상세 조회 중 오류: {str(e)}")
+        current_app.logger.error(f"포스트 상세 조회 중 오류: {str(e)}")
         return render_template('error.html', error="게시물을 불러오는 중 오류가 발생했습니다."), 500
 
-@posts_bp.route('/posts/create', methods=['GET', 'POST'])
+@posts_blueprint.route('/posts/create', methods=['GET', 'POST'])
 @login_required
 def create_post():
     if request.method == 'POST':
@@ -96,15 +91,13 @@ def create_post():
             
         except Exception as e:
             db.session.rollback()
-            current_app = posts_bp.current_app
-            if current_app:
-                current_app.logger.error(f"포스트 생성 중 오류: {str(e)}")
+            current_app.logger.error(f"포스트 생성 중 오류: {str(e)}")
             flash('게시글 등록 중 오류가 발생했습니다.', 'danger')
             return redirect(url_for('posts.create_post'))
     
     return render_template('posts/create.html')
 
-@posts_bp.route('/posts/<int:post_id>/edit', methods=['GET', 'POST'])
+@posts_blueprint.route('/posts/<int:post_id>/edit', methods=['GET', 'POST'])
 @login_required
 def edit_post(post_id):
     post = Post.query.get_or_404(post_id)
@@ -135,15 +128,13 @@ def edit_post(post_id):
             
         except Exception as e:
             db.session.rollback()
-            current_app = posts_bp.current_app
-            if current_app:
-                current_app.logger.error(f"포스트 수정 중 오류: {str(e)}")
+            current_app.logger.error(f"포스트 수정 중 오류: {str(e)}")
             flash('게시글 수정 중 오류가 발생했습니다.', 'danger')
             return redirect(url_for('posts.edit_post', post_id=post_id))
     
     return render_template('posts/edit.html', post=post)
 
-@posts_bp.route('/posts/<int:post_id>/delete', methods=['POST'])
+@posts_blueprint.route('/posts/<int:post_id>/delete', methods=['POST'])
 @login_required
 def delete_post(post_id):
     post = Post.query.get_or_404(post_id)
@@ -165,14 +156,12 @@ def delete_post(post_id):
         
     except Exception as e:
         db.session.rollback()
-        current_app = posts_bp.current_app
-        if current_app:
-            current_app.logger.error(f"포스트 삭제 중 오류: {str(e)}")
+        current_app.logger.error(f"포스트 삭제 중 오류: {str(e)}")
         flash('게시글 삭제 중 오류가 발생했습니다.', 'danger')
         return redirect(url_for('posts.view_post', post_id=post_id))
 
 # 좋아요 기능
-@posts_bp.route('/posts/<int:post_id>/like', methods=['POST'])
+@posts_blueprint.route('/posts/<int:post_id>/like', methods=['POST'])
 @login_required
 def like_post(post_id):
     try:
@@ -186,13 +175,11 @@ def like_post(post_id):
         return jsonify({"success": True, "likes_count": post.likes_count})
     except Exception as e:
         db.session.rollback()
-        current_app = posts_bp.current_app
-        if current_app:
-            current_app.logger.error(f"포스트 좋아요 처리 중 오류: {str(e)}")
+        current_app.logger.error(f"포스트 좋아요 처리 중 오류: {str(e)}")
         return jsonify({"success": False, "error": "좋아요 처리 중 오류가 발생했습니다."}), 500
 
 # 검색 기능
-@posts_bp.route('/posts/search')
+@posts_blueprint.route('/posts/search')
 def search_posts():
     try:
         keyword = request.args.get('q', '').strip()
@@ -213,7 +200,5 @@ def search_posts():
         
         return render_template('posts/search.html', posts=search_results, keyword=keyword)
     except Exception as e:
-        current_app = posts_bp.current_app
-        if current_app:
-            current_app.logger.error(f"포스트 검색 중 오류: {str(e)}")
+        current_app.logger.error(f"포스트 검색 중 오류: {str(e)}")
         return render_template('error.html', error="검색 중 오류가 발생했습니다."), 500
