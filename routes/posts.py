@@ -1,276 +1,219 @@
 # routes/posts.py
-from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, abort
 from flask_login import login_required, current_user
 from models.post import Post
 from models.comment import Comment
+from models.user import User
 from db import db
-from services.post_service import (
-    get_all_posts, get_post_by_id, create_post, update_post, 
-    delete_post, increment_view_count, get_popular_posts, 
-    save_post_images
-)
-from services.comment_service import get_comments_for_post
-from werkzeug.utils import secure_filename
-import os
-from datetime import datetime, timedelta
-import logging
+from sqlalchemy import desc, func, or_
+from datetime import datetime
 
-# 로깅 설정
-logger = logging.getLogger(__name__)
+posts_bp = Blueprint('posts', __name__)
 
-# 블루프린트 정의
-posts_blueprint = Blueprint('posts', __name__, url_prefix='/posts')
+@posts_bp.route('/posts/all')
+def all_posts():
+    try:
+        page = request.args.get('page', 1, type=int)
+        per_page = 10
+        
+        # 최신순 정렬
+        posts = Post.query.filter_by(is_deleted=False).order_by(
+            desc(Post.created_at)
+        ).paginate(page=page, per_page=per_page, error_out=False)
+        
+        return render_template('posts/all.html', posts=posts)
+    except Exception as e:
+        # 로그 기록
+        current_app = posts_bp.current_app
+        if current_app:
+            current_app.logger.error(f"포스트 목록 조회 중 오류: {str(e)}")
+        return render_template('error.html', error="포스트 목록을 불러오는 중 오류가 발생했습니다."), 500
 
-# 게시글 목록 조회
-@posts_blueprint.route('/<string:category>')
-def get_posts(category):
-    page = request.args.get('page', 1, type=int)
-    
-    # 카테고리 별 게시글 조회
-    if category == 'popular':
-        # 인기 게시글 (7일 내 작성된 게시글 중 조회수 순)
-        cutoff_date = datetime.utcnow() - timedelta(days=7)
-        popular_free = Post.query.filter(
-            Post.category == 'free',
-            Post.created_at >= cutoff_date
-        ).order_by(Post.views.desc()).limit(10).all()
+@posts_bp.route('/posts/popular')
+def popular_posts():
+    try:
+        # 인기순(좋아요 기준) 정렬
+        posts = Post.query.filter_by(is_deleted=False).order_by(
+            desc(Post.likes_count), desc(Post.created_at)
+        ).limit(20).all()
         
-        popular_humor = Post.query.filter(
-            Post.category == 'humor',
-            Post.created_at >= cutoff_date
-        ).order_by(Post.views.desc()).limit(10).all()
+        return render_template('posts/popular.html', posts=posts)
+    except Exception as e:
+        current_app = posts_bp.current_app
+        if current_app:
+            current_app.logger.error(f"인기 포스트 목록 조회 중 오류: {str(e)}")
+        return render_template('error.html', error="인기 포스트 목록을 불러오는 중 오류가 발생했습니다."), 500
+
+@posts_bp.route('/posts/<int:post_id>')
+def view_post(post_id):
+    try:
+        post = Post.query.get_or_404(post_id)
         
-        popular_info = Post.query.filter(
-            Post.category == 'info',
-            Post.created_at >= cutoff_date
-        ).order_by(Post.views.desc()).limit(10).all()
-        
-        return render_template(
-            'posts/posts_popular.html',
-            popular_free=popular_free,
-            popular_humor=popular_humor,
-            popular_info=popular_info
-        )
-    else:
-        # 일반 게시글 (카테고리별 또는 전체)
-        query = Post.query
-        
-        if category != 'all':
-            query = query.filter_by(category=category)
+        # 삭제된 게시물인 경우 404 반환
+        if post.is_deleted:
+            abort(404)
             
-        posts = query.order_by(Post.created_at.desc()).paginate(
-            page=page, per_page=10, error_out=False
-        )
+        # 조회수 증가 (중복 방지를 위한 세션 체크 로직 생략)
+        post.views_count += 1
+        db.session.commit()
         
-        template_name = f'posts/posts_{category}.html'
-        return render_template(template_name, posts=posts)
+        # 댓글 불러오기
+        comments = Comment.query.filter_by(post_id=post_id, is_deleted=False).order_by(Comment.created_at).all()
+        
+        return render_template('posts/detail.html', post=post, comments=comments)
+    except Exception as e:
+        current_app = posts_bp.current_app
+        if current_app:
+            current_app.logger.error(f"포스트 상세 조회 중 오류: {str(e)}")
+        return render_template('error.html', error="게시물을 불러오는 중 오류가 발생했습니다."), 500
 
-# 게시글 상세 조회
-@posts_blueprint.route('/<int:post_id>')
-def detail_post(post_id):
-    post = get_post_by_id(post_id)
-    
-    if not post:
-        flash('존재하지 않는 게시글입니다.', 'danger')
-        return redirect(url_for('posts.get_posts', category='all'))
-    
-    # 조회수 증가
-    increment_view_count(post_id)
-    
-    # 댓글 목록 조회
-    comments = get_comments_for_post(post_id)
-    
-    return render_template(
-        'posts/detail.html',
-        post=post,
-        comments=comments
-    )
-
-# 게시글 작성 페이지
-@posts_blueprint.route('/create', methods=['GET'])
+@posts_bp.route('/posts/create', methods=['GET', 'POST'])
 @login_required
-def add_post():
-    return render_template('posts/add.html')
+def create_post():
+    if request.method == 'POST':
+        try:
+            title = request.form.get('title', '').strip()
+            content = request.form.get('content', '').strip()
+            
+            if not title or not content:
+                flash('제목과 내용을 모두 입력해주세요.', 'danger')
+                return redirect(url_for('posts.create_post'))
+            
+            # 새 포스트 생성
+            new_post = Post(
+                title=title,
+                content=content,
+                user_id=current_user.id,
+                created_at=datetime.now(),
+                updated_at=datetime.now()
+            )
+            
+            db.session.add(new_post)
+            db.session.commit()
+            
+            flash('게시글이 등록되었습니다.', 'success')
+            return redirect(url_for('posts.view_post', post_id=new_post.id))
+            
+        except Exception as e:
+            db.session.rollback()
+            current_app = posts_bp.current_app
+            if current_app:
+                current_app.logger.error(f"포스트 생성 중 오류: {str(e)}")
+            flash('게시글 등록 중 오류가 발생했습니다.', 'danger')
+            return redirect(url_for('posts.create_post'))
+    
+    return render_template('posts/create.html')
 
-# 게시글 작성 처리
-@posts_blueprint.route('/create', methods=['POST'])
-@login_required
-def create_post_route():
-    title = request.form.get('title', '').strip()
-    content = request.form.get('content', '').strip()
-    category = request.form.get('category', '').strip()
-    
-    if not title or not content or not category:
-        flash('제목과 내용, 카테고리를 모두 입력해주세요.', 'danger')
-        return redirect(url_for('posts.add_post'))
-    
-    # 이미지 파일 처리
-    files = request.files.getlist('file')
-    images = save_post_images(files)
-    
-    # 게시글 생성
-    success, result = create_post(
-        title=title,
-        content=content,
-        category=category,
-        user_id=current_user.id,
-        images=images
-    )
-    
-    if success:
-        flash('게시글이 성공적으로 작성되었습니다.', 'success')
-        return redirect(url_for('posts.detail_post', post_id=result.id))
-    else:
-        flash(f'게시글 작성 중 오류가 발생했습니다: {result}', 'danger')
-        return redirect(url_for('posts.add_post'))
-
-# 게시글 수정 페이지
-@posts_blueprint.route('/<int:post_id>/edit', methods=['GET'])
+@posts_bp.route('/posts/<int:post_id>/edit', methods=['GET', 'POST'])
 @login_required
 def edit_post(post_id):
-    post = get_post_by_id(post_id)
+    post = Post.query.get_or_404(post_id)
     
-    if not post:
-        flash('존재하지 않는 게시글입니다.', 'danger')
-        return redirect(url_for('posts.get_posts', category='all'))
-    
-    # 작성자 권한 확인
+    # 작성자 확인
     if post.user_id != current_user.id:
-        flash('수정 권한이 없습니다.', 'danger')
-        return redirect(url_for('posts.detail_post', post_id=post_id))
+        flash('본인이 작성한 게시글만 수정할 수 있습니다.', 'danger')
+        return redirect(url_for('posts.view_post', post_id=post_id))
+    
+    if request.method == 'POST':
+        try:
+            title = request.form.get('title', '').strip()
+            content = request.form.get('content', '').strip()
+            
+            if not title or not content:
+                flash('제목과 내용을 모두 입력해주세요.', 'danger')
+                return redirect(url_for('posts.edit_post', post_id=post_id))
+            
+            # 포스트 수정
+            post.title = title
+            post.content = content
+            post.updated_at = datetime.now()
+            
+            db.session.commit()
+            
+            flash('게시글이 수정되었습니다.', 'success')
+            return redirect(url_for('posts.view_post', post_id=post_id))
+            
+        except Exception as e:
+            db.session.rollback()
+            current_app = posts_bp.current_app
+            if current_app:
+                current_app.logger.error(f"포스트 수정 중 오류: {str(e)}")
+            flash('게시글 수정 중 오류가 발생했습니다.', 'danger')
+            return redirect(url_for('posts.edit_post', post_id=post_id))
     
     return render_template('posts/edit.html', post=post)
 
-# 게시글 수정 처리
-@posts_blueprint.route('/<int:post_id>/edit', methods=['POST'])
+@posts_bp.route('/posts/<int:post_id>/delete', methods=['POST'])
 @login_required
-def update_post_route(post_id):
-    post = get_post_by_id(post_id)
+def delete_post(post_id):
+    post = Post.query.get_or_404(post_id)
     
-    if not post:
-        flash('존재하지 않는 게시글입니다.', 'danger')
-        return redirect(url_for('posts.get_posts', category='all'))
-    
-    # 작성자 권한 확인
+    # 작성자 확인
     if post.user_id != current_user.id:
-        flash('수정 권한이 없습니다.', 'danger')
-        return redirect(url_for('posts.detail_post', post_id=post_id))
+        flash('본인이 작성한 게시글만 삭제할 수 있습니다.', 'danger')
+        return redirect(url_for('posts.view_post', post_id=post_id))
     
-    title = request.form.get('title', '').strip()
-    content = request.form.get('content', '').strip()
-    
-    if not title or not content:
-        flash('제목과 내용을 모두 입력해주세요.', 'danger')
-        return redirect(url_for('posts.edit_post', post_id=post_id))
-    
-    # 새 이미지 파일 처리
-    files = request.files.getlist('file')
-    if files and files[0].filename:
-        new_images = save_post_images(files)
+    try:
+        # 실제로 삭제하지 않고 is_deleted 필드만 True로 설정
+        post.is_deleted = True
+        post.updated_at = datetime.now()
         
-        # 기존 이미지와 새 이미지 합치기
-        existing_images = post.images or []
-        images = existing_images + new_images
-    else:
-        images = post.images
-    
-    # 게시글 수정
-    success, result = update_post(
-        post_id=post_id,
-        title=title,
-        content=content,
-        images=images
-    )
-    
-    if success:
-        flash('게시글이 성공적으로 수정되었습니다.', 'success')
-        return redirect(url_for('posts.detail_post', post_id=post_id))
-    else:
-        flash(f'게시글 수정 중 오류가 발생했습니다: {result}', 'danger')
-        return redirect(url_for('posts.edit_post', post_id=post_id))
+        db.session.commit()
+        
+        flash('게시글이 삭제되었습니다.', 'success')
+        return redirect(url_for('posts.all_posts'))
+        
+    except Exception as e:
+        db.session.rollback()
+        current_app = posts_bp.current_app
+        if current_app:
+            current_app.logger.error(f"포스트 삭제 중 오류: {str(e)}")
+        flash('게시글 삭제 중 오류가 발생했습니다.', 'danger')
+        return redirect(url_for('posts.view_post', post_id=post_id))
 
-# 게시글 삭제 처리
-@posts_blueprint.route('/<int:post_id>/delete', methods=['POST'])
+# 좋아요 기능
+@posts_bp.route('/posts/<int:post_id>/like', methods=['POST'])
 @login_required
-def delete_post_route(post_id):
-    post = get_post_by_id(post_id)
-    
-    if not post:
-        flash('존재하지 않는 게시글입니다.', 'danger')
-        return redirect(url_for('posts.get_posts', category='all'))
-    
-    # 작성자 권한 확인
-    if post.user_id != current_user.id:
-        flash('삭제 권한이 없습니다.', 'danger')
-        return redirect(url_for('posts.detail_post', post_id=post_id))
-    
-    category = post.category
-    
-    # 게시글 삭제
-    success, message = delete_post(post_id)
-    
-    if success:
-        flash('게시글이 성공적으로 삭제되었습니다.', 'success')
-        return redirect(url_for('posts.get_posts', category=category))
-    else:
-        flash(f'게시글 삭제 중 오류가 발생했습니다: {message}', 'danger')
-        return redirect(url_for('posts.detail_post', post_id=post_id))
+def like_post(post_id):
+    try:
+        post = Post.query.get_or_404(post_id)
+        
+        # 이미 좋아요 눌렀는지 확인하는 로직 필요 (DB 모델에 따라 구현)
+        # 여기서는 간단하게 증가만 처리
+        post.likes_count += 1
+        db.session.commit()
+        
+        return jsonify({"success": True, "likes_count": post.likes_count})
+    except Exception as e:
+        db.session.rollback()
+        current_app = posts_bp.current_app
+        if current_app:
+            current_app.logger.error(f"포스트 좋아요 처리 중 오류: {str(e)}")
+        return jsonify({"success": False, "error": "좋아요 처리 중 오류가 발생했습니다."}), 500
 
-# 이미지 업로드 API
-@posts_blueprint.route('/upload-image', methods=['POST'])
-@login_required
-def upload_image():
-    if 'file' not in request.files:
-        return jsonify({'success': False, 'message': '파일이 없습니다.'}), 400
-    
-    file = request.files['file']
-    
-    if file.filename == '':
-        return jsonify({'success': False, 'message': '선택된 파일이 없습니다.'}), 400
-    
-    if file:
-        filename = secure_filename(file.filename)
-        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
-        new_filename = f"{timestamp}_{filename}"
+# 검색 기능
+@posts_bp.route('/posts/search')
+def search_posts():
+    try:
+        keyword = request.args.get('q', '').strip()
+        if not keyword:
+            return redirect(url_for('posts.all_posts'))
         
-        # 업로드 폴더 확인 및 생성
-        upload_folder = current_app.config['UPLOAD_FOLDER']
-        os.makedirs(upload_folder, exist_ok=True)
+        page = request.args.get('page', 1, type=int)
+        per_page = 10
         
-        # 파일 저장
-        file.save(os.path.join(upload_folder, new_filename))
+        # 제목과 내용에서 검색
+        search_results = Post.query.filter(
+            Post.is_deleted == False,
+            or_(
+                Post.title.ilike(f'%{keyword}%'),
+                Post.content.ilike(f'%{keyword}%')
+            )
+        ).order_by(desc(Post.created_at)).paginate(page=page, per_page=per_page, error_out=False)
         
-        # 이미지 URL 반환
-        image_url = url_for('static', filename=f'uploads/{new_filename}')
-        
-        return jsonify({'success': True, 'url': image_url, 'filename': new_filename})
-    
-    return jsonify({'success': False, 'message': '파일 업로드 실패'}), 500
-
-# 인기 게시글 API
-@posts_blueprint.route('/api/popular/<string:category>', methods=['GET'])
-def get_popular_posts_api(category):
-    days = request.args.get('days', 7, type=int)
-    limit = request.args.get('limit', 5, type=int)
-    
-    # 인기 게시글 조회
-    cutoff_date = datetime.utcnow() - timedelta(days=days)
-    
-    query = Post.query.filter(Post.created_at >= cutoff_date)
-    
-    if category != 'all':
-        query = query.filter_by(category=category)
-    
-    posts = query.order_by(Post.views.desc()).limit(limit).all()
-    
-    # 결과 JSON 변환
-    result = [{
-        'id': post.id,
-        'title': post.title,
-        'views': post.views,
-        'comment_count': len(post.comments),
-        'created_at': post.created_at.strftime('%Y-%m-%d %H:%M'),
-        'author': post.user.username
-    } for post in posts]
-    
-    return jsonify(result)
+        return render_template('posts/search.html', posts=search_results, keyword=keyword)
+    except Exception as e:
+        current_app = posts_bp.current_app
+        if current_app:
+            current_app.logger.error(f"포스트 검색 중 오류: {str(e)}")
+        return render_template('error.html', error="검색 중 오류가 발생했습니다."), 500
