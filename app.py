@@ -82,6 +82,8 @@ def create_app():
     
     # 업로드 폴더가 없으면 생성
     os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
+    os.makedirs(os.path.join(app.config["UPLOAD_FOLDER"], "news"), exist_ok=True)
+    os.makedirs(os.path.join(app.config["UPLOAD_FOLDER"], "news/thumbs"), exist_ok=True)
 
     # favicon.ico 경로 추가
     @app.route('/favicon.ico')
@@ -114,7 +116,8 @@ def background_scraper(app):
             # 각 카테고리별 뉴스 스크래핑
             for category, url in NAVER_NEWS_CATEGORIES.items():
                 try:
-                    scrape_naver_news(url, category)
+                    # app 객체 전달하여 이미지 저장 경로 설정
+                    scrape_naver_news(url, category, app=app)
                     print(f"[SUCCESS] {category} 카테고리 스크래핑 완료")
                 except Exception as e:
                     print(f"[ERROR] {category} 카테고리 스크래핑 실패: {e}")
@@ -133,6 +136,11 @@ sys.excepthook = suppress_traceback
 # Flask 애플리케이션 실행
 if __name__ == "__main__":
     app = create_app()
+
+    # 테이블 수정을 위해 Flask-Migrate 명령어를 사용하여 마이그레이션 생성 및 적용 알림
+    print("[INFO] 모델 변경사항이 있는 경우 다음 명령을 실행하세요:")
+    print("    flask db migrate -m 'Add image_path and thumbnail_path to News model'")
+    print("    flask db upgrade")
 
     # 데이터베이스 테이블 생성 확인
     with app.app_context():

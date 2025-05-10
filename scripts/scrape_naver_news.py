@@ -1,314 +1,326 @@
 # scripts/scrape_naver_news.py
 import requests
-from bs4 import BeautifulSoup
-from datetime import datetime
 import time
 import random
 import logging
-import json
-import sys
 import os
-
-# Flask 애플리케이션 경로 추가 (파일을 직접 실행할 때 필요)
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-# 애플리케이션 모듈 임포트
-try:
-    from db import db
-    from models.news import News
-except ImportError:
-    print("모듈 임포트 오류. 애플리케이션 구조를 확인해주세요.")
-    sys.exit(1)
+from bs4 import BeautifulSoup
+from datetime import datetime
+from urllib.parse import urlparse, parse_qs
+from db import db
+from models.news import News
+from scripts.image_utils import download_image
 
 # 로깅 설정
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler('scraping.log')
-    ]
-)
 logger = logging.getLogger('news_scraper')
+logger.setLevel(logging.INFO)
+if not logger.handlers:
+    handler = logging.StreamHandler()
+    formatter = logging.Formatter('%(levelname)s:%(name)s:%(message)s')
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
 
-# 네이버 뉴스 카테고리별 URL
+# 네이버 뉴스 카테고리 URL
 NAVER_NEWS_CATEGORIES = {
-    'politics': 'https://news.naver.com/main/main.naver?mode=LSD&mid=shm&sid1=100',  # 정치
-    'economy': 'https://news.naver.com/main/main.naver?mode=LSD&mid=shm&sid1=101',   # 경제
-    'domestic': 'https://news.naver.com/main/main.naver?mode=LSD&mid=shm&sid1=102',  # 사회
-    'world': 'https://news.naver.com/main/main.naver?mode=LSD&mid=shm&sid1=104',     # 세계
+    'politics': 'https://news.naver.com/main/main.naver?mode=LSD&mid=shm&sid1=100',
+    'economy': 'https://news.naver.com/main/main.naver?mode=LSD&mid=shm&sid1=101',
+    'domestic': 'https://news.naver.com/main/main.naver?mode=LSD&mid=shm&sid1=102',
+    'world': 'https://news.naver.com/main/main.naver?mode=LSD&mid=shm&sid1=104',
+    'tech': 'https://news.naver.com/main/main.naver?mode=LSD&mid=shm&sid1=105',
 }
 
-# HTTP 요청 헤더
+# 리퀘스트 헤더 설정
 HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-    'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
+    'Accept-Language': 'ko-KR,ko;q=0.8,en-US;q=0.5,en;q=0.3',
     'Connection': 'keep-alive',
     'Upgrade-Insecure-Requests': '1',
-    'Cache-Control': 'max-age=0'
+    'Cache-Control': 'max-age=0',
 }
 
-def get_article_content(url, max_retries=3):
+def get_article_id_from_url(url):
+    """URL에서
+    기사 ID를 추출합니다."""
+    parsed_url = urlparse(url)
+    query_params = parse_qs(parsed_url.query)
+    
+    # 네이버 뉴스 URL 형식에 따라 다양한 파라미터에서 ID 추출 시도
+    article_id = None
+    for param in ['aid', 'articleId', 'news_id']:
+        if param in query_params:
+            article_id = query_params[param][0]
+            break
+    
+    # ID를 찾지 못한 경우 URL 패턴을 확인하여 추출 시도
+    if not article_id and '/article/' in url:
+        # URL 패턴: https://n.news.naver.com/mnews/article/XXX/YYYYYYY 형식 처리
+        parts = url.split('/article/')
+        if len(parts) > 1 and '/' in parts[1]:
+            try:
+                article_id = parts[1].split('/')[1]
+            except (IndexError, ValueError):
+                pass
+    
+    return article_id
+
+def extract_article_content(url, max_retries=3):
     """
-    뉴스 기사 상세 내용 스크래핑
+    뉴스 기사의 내용을 추출합니다.
     
     Args:
-        url (str): 기사 URL
+        url (str): 뉴스 기사 URL
         max_retries (int): 최대 재시도 횟수
         
     Returns:
-        dict: 기사 상세 정보 딕셔너리
+        tuple: (제목, 내용, 이미지URL) 튜플 또는 실패 시 (None, None, None)
     """
-    # URL 정규화
-    if url.startswith("//"):
-        url = f"https:{url}"
-    
     retries = 0
     while retries < max_retries:
         try:
+            # 요청 사이에 랜덤 딜레이 추가 (봇 감지 방지)
+            time.sleep(random.uniform(1.0, 3.0))
+            
             response = requests.get(url, headers=HEADERS, timeout=10)
-            if response.status_code != 200:
-                logger.warning(f"기사 접근 실패: {url} (상태 코드: {response.status_code})")
-                retries += 1
-                time.sleep(random.uniform(1, 3))
-                continue
+            response.raise_for_status()  # HTTP 오류 발생 시 예외 발생
             
             soup = BeautifulSoup(response.text, 'html.parser')
             
-            # 1. 기본 정보 추출
-            title_tag = soup.select_one('#title_area span') or soup.select_one('h2.media_end_head_headline')
-            title = title_tag.get_text(strip=True) if title_tag else "제목 없음"
+            # 다양한 네이버 뉴스 템플릿 지원
+            title = None
+            content = None
+            main_img_url = None
             
-            # 2. 언론사
-            source_tag = soup.select_one('.media_end_head_top img') or soup.select_one('.press_logo img')
-            source = source_tag.get('title', '출처 없음') if source_tag else '출처 없음'
+            # 제목 추출 시도
+            title_candidates = [
+                soup.select_one('h2.media_end_head_headline'),
+                soup.select_one('h2.end_tit'),
+                soup.select_one('h3.tts_head'),
+                soup.select_one('h3.article_title'),
+                soup.select_one('h2.news_title'),
+                soup.select_one('h1.title')
+            ]
             
-            # 3. 작성 시간
-            date_tag = soup.select_one('.media_end_head_info_datestamp_time')
-            if date_tag and date_tag.get('data-date-time'):
-                try:
-                    published_at = datetime.fromisoformat(date_tag.get('data-date-time').replace('Z', '+00:00'))
-                except ValueError:
-                    published_at = datetime.now()
-            else:
-                published_at = datetime.now()
+            for candidate in title_candidates:
+                if candidate:
+                    title = candidate.get_text(strip=True)
+                    break
             
-            # 4. 작성자 정보
-            author_tag = soup.select_one('.media_end_head_journalist_name')
-            author = author_tag.get_text(strip=True) if author_tag else None
+            # 내용 추출 시도
+            content_candidates = [
+                soup.select_one('div#newsct_article'),
+                soup.select_one('div#articeBody'),
+                soup.select_one('div.article_body'),
+                soup.select_one('div.news_end_content'),
+                soup.select_one('div#articleBodyContents'),
+                soup.select_one('div.article_content'),
+                soup.select_one('div.content_area'),
+                soup.select_one('div.article_area')
+            ]
             
-            author_email_tag = soup.select_one('.media_end_head_journalist_email')
-            author_email = author_email_tag.get_text(strip=True) if author_email_tag else None
+            for candidate in content_candidates:
+                if candidate:
+                    # 불필요한 요소 제거
+                    for tag in candidate.select('.reference, .media_end_sponsorship, .byline, .reporter_area, script, style'):
+                        if tag:
+                            tag.decompose()
+                    
+                    content = candidate.get_text(strip=True).replace('\n', ' ').replace('\t', ' ')
+                    
+                    # 중복 공백 제거
+                    while '  ' in content:
+                        content = content.replace('  ', ' ')
+                    break
             
-            # 5. 본문 내용
-            content_area = soup.select_one('#dic_area') or soup.select_one('.news_end_content')
-            if not content_area:
-                logger.warning(f"기사 본문을 찾을 수 없음: {url}")
-                retries += 1
-                time.sleep(random.uniform(1, 3))
-                continue
+            # 이미지 URL 추출 시도
+            img_candidates = [
+                soup.select_one('.end_photo_org img'),
+                soup.select_one('.news_media_img img'),
+                soup.select_one('.article_photo img'),
+                soup.select_one('.news_picture img'),
+                soup.select_one('.article_img img'),
+                soup.select_one('.article_main_img img'),
+                soup.select_one('meta[property="og:image"]'),  # OG 이미지 태그 추가
+                soup.select_one('meta[name="twitter:image"]')  # Twitter 이미지 태그 추가
+            ]
             
-            # 본문 텍스트 추출
-            content = content_area.get_text(strip=True, separator='\n')
+            for candidate in img_candidates:
+                if candidate:
+                    # meta 태그인 경우 content 속성 사용
+                    if candidate.name == 'meta':
+                        main_img_url = candidate.get('content')
+                    else:
+                        main_img_url = candidate.get('src')
+                        
+                    if main_img_url:
+                        # 상대 경로인 경우 절대 경로로 변환
+                        if main_img_url.startswith('//'):
+                            main_img_url = 'https:' + main_img_url
+                        break
             
-            # 6. 이미지 정보
-            images = []
-            for img in content_area.select('img'):
-                if img.get('data-src'):
-                    img_url = img.get('data-src')
-                elif img.get('src'):
-                    img_url = img.get('src')
-                else:
-                    continue
+            # 필수 정보 확인
+            if not title or not content:
+                raise ValueError("제목 또는 내용을 찾을 수 없습니다")
                 
-                if img_url.startswith('//'):
-                    img_url = f'https:{img_url}'
+            # 내용이 너무 짧은 경우 예외 처리
+            if len(content) < 50:
+                raise ValueError("기사 내용이 너무 짧습니다 (50자 미만)")
                 
-                # 이미지 캡션
-                caption_tag = img.find_next('em', class_='img_desc') or img.find_parent('figure').find('figcaption')
-                caption = caption_tag.get_text(strip=True) if caption_tag else None
-                
-                images.append({
-                    'url': img_url,
-                    'alt': img.get('alt', ''),
-                    'caption': caption
-                })
-            
-            # 7. 썸네일 (메타 태그에서 추출)
-            thumbnail_tag = soup.select_one('meta[property="og:image"]')
-            thumbnail = thumbnail_tag.get('content') if thumbnail_tag else None
-            
-            # 8. 원문 URL
-            source_url_tag = soup.select_one('a.media_end_head_origin_link')
-            source_url = source_url_tag.get('href') if source_url_tag else url
-            
-            result = {
-                'title': title,
-                'content': content,
-                'published_at': published_at,
-                'source': source,
-                'source_url': source_url,
-                'thumbnail': thumbnail,
-                'images': images,
-                'author': author,
-                'author_email': author_email
-            }
-            
-            logger.info(f"기사 스크래핑 성공: {title}")
-            return result
+            return title, content, main_img_url
             
         except Exception as e:
-            logger.error(f"기사 내용 추출 중 오류 발생: {e} - URL: {url}")
             retries += 1
-            time.sleep(random.uniform(1, 3))
-    
-    logger.error(f"최대 재시도 횟수 초과. 기사 스크래핑 실패: {url}")
-    return None
+            logger.error(f"기사 내용 추출 중 오류 발생: {str(e)} - URL: {url}")
+            
+            # 마지막 시도에서 실패한 경우
+            if retries >= max_retries:
+                logger.error(f"최대 재시도 횟수 초과. 기사 스크래핑 실패: {url}")
+                return None, None, None
+                
+    return None, None, None
 
-def scrape_naver_news(category_url, category_name, limit=20):
+def scrape_naver_news(category_url, category_name, limit=20, app=None):
     """
-    네이버 뉴스 카테고리별 스크래핑
+    네이버 뉴스 카테고리 페이지에서 기사를 스크래핑하고 데이터베이스에 저장합니다.
     
     Args:
-        category_url (str): 카테고리 URL
-        category_name (str): 카테고리 이름 (영문)
-        limit (int): 스크래핑할 기사 수 제한
+        category_url (str): 스크래핑할 카테고리 URL
+        category_name (str): 카테고리 이름 (예: politics, economy 등)
+        limit (int): 수집할 최대 기사 수
+        app (Flask): Flask 애플리케이션 객체 (이미지 저장 경로 설정용)
         
     Returns:
-        list: 스크래핑한 뉴스 기사 목록
+        int: 성공적으로 스크래핑한 기사 수
     """
     logger.info(f"[{category_name}] 뉴스 스크래핑 시작")
-    news_list = []
     
     try:
-        # 카테고리 페이지 요청
-        response = requests.get(category_url, headers=HEADERS, timeout=10)
-        if response.status_code != 200:
-            logger.error(f"카테고리 페이지 접근 실패: {category_url} (상태 코드: {response.status_code})")
-            return news_list
+        # 업로드 폴더 설정
+        upload_folder = 'static/uploads/news'
+        if app:
+            upload_folder = os.path.join(app.static_folder, 'uploads/news')
         
+        # 1. 카테고리 페이지 요청
+        response = requests.get(category_url, headers=HEADERS, timeout=10)
+        response.raise_for_status()
+        
+        # 2. 기사 링크 추출
         soup = BeautifulSoup(response.text, 'html.parser')
         
-        # 기사 링크 추출 (섹션 헤드라인, 주요 뉴스, 최신 뉴스)
-        article_links = set()
-        for article in soup.select('.sa_item'):
-            link_tag = article.select_one('a.sa_text_title')
-            if link_tag and link_tag.get('href'):
-                article_links.add(link_tag.get('href'))
+        # 다양한 네이버 뉴스 레이아웃에 대응
+        article_links = []
+        
+        # 메인 헤드라인 링크
+        headlines = soup.select('.headline_cluster a.cjs_news_a, .cluster_text a.cjs_news_a')
+        for link in headlines:
+            href = link.get('href')
+            if href and 'news.naver.com' in href:
+                article_links.append(href)
+        
+        # 일반 기사 링크
+        news_links = soup.select('.cluster_item a.cjs_news_a, .cjs_ct_hab a.cjs_news_a')
+        for link in news_links:
+            href = link.get('href')
+            if href and 'news.naver.com' in href:
+                article_links.append(href)
                 
-                # 제한된 기사 수에 도달하면 중단
-                if len(article_links) >= limit:
-                    break
+        # 추가 링크 형식 지원
+        more_links = soup.select('.cjs_news_list a.cjs_news_a, .section_latest a.cjs_news_a')
+        for link in more_links:
+            href = link.get('href')
+            if href and 'news.naver.com' in href:
+                article_links.append(href)
         
-        # 각 기사 상세 페이지 스크래핑
-        for idx, link in enumerate(list(article_links)[:limit]):
-            logger.info(f"[{category_name}] {idx+1}/{len(article_links)} 기사 처리 중: {link}")
-            
-            # 요청 간 간격 두기 (서버 부하 방지)
-            time.sleep(random.uniform(0.5, 1.5))
-            
-            article_data = get_article_content(link)
-            if article_data:
-                article_data['category'] = category_name
-                news_list.append(article_data)
+        # 중복 제거 및 제한
+        article_links = list(dict.fromkeys(article_links))[:limit]
         
-        logger.info(f"[{category_name}] 뉴스 스크래핑 완료. 총 {len(news_list)}개 기사 수집.")
-        return news_list
+        if not article_links:
+            logger.warning(f"[{category_name}] 기사 링크를 찾을 수 없습니다.")
+            return 0
+        
+        # 3. 각 기사 내용 추출 및 저장
+        success_count = 0
+        for i, url in enumerate(article_links):
+            logger.info(f"[{category_name}] {i+1}/{len(article_links)} 기사 처리 중: {url}")
+            
+            # 이미 저장된 기사인지 확인
+            article_id = get_article_id_from_url(url)
+            if article_id:
+                existing_news = News.query.filter_by(source_id=article_id).first()
+                if existing_news:
+                    logger.info(f"이미 저장된 기사입니다: {url}")
+                    continue
+            
+            # 기사 내용 추출
+            title, content, image_url = extract_article_content(url)
+            
+            if title and content:
+                try:
+                    # 이미지 다운로드 및 썸네일 생성
+                    image_path = None
+                    thumbnail_path = None
+                    
+                    if image_url:
+                        image_path, thumbnail_path = download_image(
+                            image_url, 
+                            upload_folder, 
+                            max_size=(800, 800), 
+                            thumb_size=(300, 200)
+                        )
+                        
+                        if image_path and not image_path.startswith('/'):
+                            image_path = '/' + image_path
+                            
+                        if thumbnail_path and not thumbnail_path.startswith('/'):
+                            thumbnail_path = '/' + thumbnail_path
+                    
+                    # 새 기사 객체 생성 및 저장
+                    news = News(
+                        title=title,
+                        content=content[:10000],  # 내용이 너무 길면 자름
+                        image_url=image_url,      # 원본 이미지 URL
+                        image_path=image_path,    # 로컬에 저장된 이미지 경로
+                        thumbnail_path=thumbnail_path,  # 썸네일 경로
+                        source_url=url,
+                        source_id=article_id or '',
+                        category=category_name,
+                        published_at=datetime.now()
+                    )
+                    
+                    db.session.add(news)
+                    db.session.commit()
+                    
+                    logger.info(f"기사 스크래핑 성공: {title}")
+                    success_count += 1
+                    
+                except Exception as e:
+                    db.session.rollback()
+                    logger.error(f"기사 저장 중 오류 발생: {str(e)}")
+            
+            # 크롤링 간격 조절 (봇 감지 방지)
+            time.sleep(random.uniform(1.0, 3.0))
+        
+        logger.info(f"[{category_name}] 뉴스 스크래핑 완료. 총 {success_count}개 기사 수집.")
+        return success_count
         
     except Exception as e:
-        logger.error(f"[{category_name}] 뉴스 스크래핑 중 오류 발생: {e}")
-        return news_list
-
-def save_to_database(news_list, app):
-    """
-    스크래핑한 뉴스를 데이터베이스에 저장
-    
-    Args:
-        news_list (list): 뉴스 기사 목록
-        app: Flask 애플리케이션 컨텍스트
-        
-    Returns:
-        int: 저장된 기사 수
-    """
-    if not news_list:
-        logger.info("저장할 뉴스가 없습니다.")
+        logger.error(f"[{category_name}] 카테고리 스크래핑 중 오류 발생: {str(e)}")
         return 0
-    
-    saved_count = 0
-    
-    with app.app_context():
-        for news_data in news_list:
-            try:
-                # 중복 확인 (URL 기준)
-                existing = News.query.filter_by(source_url=news_data['source_url']).first()
-                if existing:
-                    logger.info(f"중복 기사 건너뛰기: {news_data['title']}")
-                    continue
-                
-                # 이미지 정보 직렬화
-                images_json = json.dumps(news_data['images']) if news_data['images'] else None
-                
-                # 새 뉴스 기사 생성
-                news = News(
-                    title=news_data['title'],
-                    content=news_data['content'],
-                    source=news_data['source'],
-                    thumbnail=news_data['thumbnail'],
-                    source_url=news_data['source_url'],
-                    published_at=news_data['published_at'],
-                    category=news_data['category'],
-                    images=images_json,
-                    author=news_data['author'],
-                    author_email=news_data['author_email'],
-                    created_at=datetime.now(),
-                    user_id=1  # 기본 관리자 ID
-                )
-                
-                db.session.add(news)
-                saved_count += 1
-                
-                # 10개마다 커밋 (메모리 사용량 관리)
-                if saved_count % 10 == 0:
-                    db.session.commit()
-                    logger.info(f"{saved_count}개 기사 저장 완료")
-                
-            except Exception as e:
-                logger.error(f"기사 저장 중 오류 발생: {e} - {news_data['title']}")
-                db.session.rollback()
-        
-        # 최종 커밋
-        try:
-            db.session.commit()
-            logger.info(f"총 {saved_count}개 기사 저장 완료")
-        except Exception as e:
-            logger.error(f"최종 커밋 중 오류 발생: {e}")
-            db.session.rollback()
-            
-    return saved_count
-
-def main():
-    """메인 스크래핑 함수"""
-    # Flask 애플리케이션 컨텍스트 가져오기
-    from app import create_app
-    app = create_app()
-    
-    all_news = []
-    
-    # 각 카테고리별 스크래핑
-    for category_name, category_url in NAVER_NEWS_CATEGORIES.items():
-        logger.info(f"===== {category_name} 카테고리 스크래핑 시작 =====")
-        category_news = scrape_naver_news(category_url, category_name, limit=20)
-        all_news.extend(category_news)
-        
-        # 카테고리 간 간격 두기
-        time.sleep(random.uniform(2, 5))
-    
-    # 수집한 뉴스 DB 저장
-    if all_news:
-        save_to_database(all_news, app)
-    
-    logger.info("스크래핑 작업 완료!")
 
 if __name__ == "__main__":
-    main()
+    # 테스트를 위한 단독 실행 코드
+    from flask import Flask
+    from db import db
+    
+    app = Flask(__name__)
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///test.db'
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    
+    with app.app_context():
+        db.init_app(app)
+        db.create_all()
+        
+        for category, url in NAVER_NEWS_CATEGORIES.items():
+            print(f"카테고리 '{category}' 스크래핑 시작...")
+            count = scrape_naver_news(url, category, limit=5, app=app)
+            print(f"카테고리 '{category}' 스크래핑 완료. {count}개 기사 수집.")
