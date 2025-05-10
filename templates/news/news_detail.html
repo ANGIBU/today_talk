@@ -40,12 +40,20 @@
 
     <div class="newsct_article">
         <article class="dic_area">
-            {% if news.images %}
+            {% if news.image_path %}
+                <div class="end_photo_org">
+                    <div class="news-image-wrap">
+                        <div class="news-image">
+                            <img src="{{ news.image_path }}" alt="{{ news.title }}" class="news-img">
+                        </div>
+                    </div>
+                </div>
+            {% elif news.images %}
                 {% for image in news.images %}
                 <div class="end_photo_org">
                     <div class="news-image-wrap">
                         <div class="news-image">
-                            <img src="{{ image.url }}" alt="{{ image.alt }}" class="news-img">
+                            <img src="{{ image.url }}" alt="{{ image.alt|default('') }}" class="news-img">
                         </div>
                     </div>
                     {% if image.caption %}
@@ -69,7 +77,7 @@
         {% endif %}
 
         <div class="copyright">
-            <p>Copyright ⓒ {{ news.source }}. All rights reserved. 무단 전재 및 재배포 금지.</p>
+            <p>Copyright ⓒ {{ news.source|default('Today Talk') }}. All rights reserved. 무단 전재 및 재배포 금지.</p>
         </div>
         
         <div class="share-buttons">
@@ -88,14 +96,18 @@
         </div>
     </div>
 
-    {% if news.related_news %}
+    {% if related_news %}
     <div class="related-news">
         <h3>관련 뉴스</h3>
         <ul class="related-news-list">
-            {% for related in news.related_news %}
+            {% for related in related_news %}
             <li class="related-news-item">
                 <a href="{{ url_for('news.detail', news_id=related.id) }}">
-                    {% if related.thumbnail %}
+                    {% if related.thumbnail_path %}
+                    <div class="related-thumb">
+                        <img src="{{ related.thumbnail_path }}" alt="관련 뉴스 이미지">
+                    </div>
+                    {% elif related.thumbnail %}
                     <div class="related-thumb">
                         <img src="{{ related.thumbnail }}" alt="관련 뉴스 이미지">
                     </div>

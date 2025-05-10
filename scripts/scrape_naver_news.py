@@ -64,6 +64,52 @@ def get_article_id_from_url(url):
     
     return article_id
 
+def extract_publisher(soup):
+    """기사 언론사 추출"""
+    try:
+        # 다양한 방식으로 언론사명 추출 시도
+        publisher_candidates = [
+            soup.select_one('.press_logo img'),
+            soup.select_one('.c_inner .c_company'),
+            soup.select_one('.press_logo'),
+            soup.select_one('.media_end_head_top_logo img'),
+            soup.select_one('.media_end_head_top_logo'),
+            soup.select_one('.article_header .press'),
+            soup.select_one('meta[property="og:site_name"]')
+        ]
+        
+        for candidate in publisher_candidates:
+            if candidate:
+                if candidate.name == 'meta':
+                    return candidate.get('content')
+                elif candidate.name == 'img':
+                    return candidate.get('alt') or candidate.get('title')
+                else:
+                    return candidate.get_text(strip=True)
+        
+        return None
+    except Exception:
+        return None
+
+def extract_author(soup):
+    """기사 작성자 추출"""
+    try:
+        author_candidates = [
+            soup.select_one('.byline_s'),
+            soup.select_one('.article_footer .author'),
+            soup.select_one('.reporter_area'),
+            soup.select_one('.journalistcard_summary_name'),
+            soup.select_one('.byline')
+        ]
+        
+        for candidate in author_candidates:
+            if candidate:
+                return candidate.get_text(strip=True)
+        
+        return None
+    except Exception:
+        return None
+
 def extract_article_content(url, max_retries=3):
     """
     뉴스 기사의 내용을 추출합니다.
@@ -73,7 +119,7 @@ def extract_article_content(url, max_retries=3):
         max_retries (int): 최대 재시도 횟수
         
     Returns:
-        tuple: (제목, 내용, 이미지URL) 튜플 또는 실패 시 (None, None, None)
+        tuple: (제목, 내용, 이미지URL, 언론사, 작성자) 튜플 또는 실패 시 (None, None, None, None, None)
     """
     retries = 0
     while retries < max_retries:
@@ -90,6 +136,8 @@ def extract_article_content(url, max_retries=3):
             title = None
             content = None
             main_img_url = None
+            publisher = None
+            author = None
             
             # 제목 추출 시도
             title_candidates = [
@@ -98,12 +146,16 @@ def extract_article_content(url, max_retries=3):
                 soup.select_one('h3.tts_head'),
                 soup.select_one('h3.article_title'),
                 soup.select_one('h2.news_title'),
-                soup.select_one('h1.title')
+                soup.select_one('h1.title'),
+                soup.select_one('meta[property="og:title"]')
             ]
             
             for candidate in title_candidates:
                 if candidate:
-                    title = candidate.get_text(strip=True)
+                    if candidate.name == 'meta':
+                        title = candidate.get('content')
+                    else:
+                        title = candidate.get_text(strip=True)
                     break
             
             # 내용 추출 시도
@@ -158,6 +210,10 @@ def extract_article_content(url, max_retries=3):
                             main_img_url = 'https:' + main_img_url
                         break
             
+            # 언론사 및 작성자 추출
+            publisher = extract_publisher(soup)
+            author = extract_author(soup)
+            
             # 필수 정보 확인
             if not title or not content:
                 raise ValueError("제목 또는 내용을 찾을 수 없습니다")
@@ -166,7 +222,7 @@ def extract_article_content(url, max_retries=3):
             if len(content) < 50:
                 raise ValueError("기사 내용이 너무 짧습니다 (50자 미만)")
                 
-            return title, content, main_img_url
+            return title, content, main_img_url, publisher, author
             
         except Exception as e:
             retries += 1
@@ -175,9 +231,9 @@ def extract_article_content(url, max_retries=3):
             # 마지막 시도에서 실패한 경우
             if retries >= max_retries:
                 logger.error(f"최대 재시도 횟수 초과. 기사 스크래핑 실패: {url}")
-                return None, None, None
+                return None, None, None, None, None
                 
-    return None, None, None
+    return None, None, None, None, None
 
 def scrape_naver_news(category_url, category_name, limit=20, app=None):
     """
@@ -252,7 +308,7 @@ def scrape_naver_news(category_url, category_name, limit=20, app=None):
                     continue
             
             # 기사 내용 추출
-            title, content, image_url = extract_article_content(url)
+            title, content, image_url, publisher, author = extract_article_content(url)
             
             if title and content:
                 try:
@@ -273,18 +329,26 @@ def scrape_naver_news(category_url, category_name, limit=20, app=None):
                             
                         if thumbnail_path and not thumbnail_path.startswith('/'):
                             thumbnail_path = '/' + thumbnail_path
+                            
+                        # thumbnail 필드 (기존 필드)에도 저장
+                        thumbnail = thumbnail_path
                     
                     # 새 기사 객체 생성 및 저장
                     news = News(
                         title=title,
                         content=content[:10000],  # 내용이 너무 길면 자름
-                        image_url=image_url,      # 원본 이미지 URL
-                        image_path=image_path,    # 로컬에 저장된 이미지 경로
-                        thumbnail_path=thumbnail_path,  # 썸네일 경로
+                        source=publisher,  # 언론사 정보 추가
+                        author=author,  # 작성자 정보 추가
+                        image_url=image_url,
+                        image_path=image_path,
+                        thumbnail_path=thumbnail_path,
+                        thumbnail=thumbnail_path,  # 기존 필드 지원
                         source_url=url,
                         source_id=article_id or '',
                         category=category_name,
-                        published_at=datetime.now()
+                        published_at=datetime.now(),
+                        views=0,  # 조회수 초기화
+                        user_id=1  # 임시 사용자 ID (필요에 따라 수정)
                     )
                     
                     db.session.add(news)

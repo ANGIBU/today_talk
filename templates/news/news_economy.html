@@ -25,7 +25,9 @@
                     <div class="post-item">
                         <a href="{{ url_for('news.detail', news_id=news.id) }}" class="post-title">
                             <div class="post-title-content">
-                                {% if news.thumbnail %}
+                                {% if news.thumbnail_path %}
+                                    <img src="{{ news.thumbnail_path }}" alt="썸네일" class="post-thumbnail">
+                                {% elif news.thumbnail %}
                                     <img src="{{ news.thumbnail }}" alt="썸네일" class="post-thumbnail">
                                 {% endif %}
                                 <span class="title-text">{{ news.title }}</span>

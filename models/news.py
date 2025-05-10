@@ -16,10 +16,19 @@ class News(db.Model):
     published_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     category = db.Column(db.String(50), nullable=False)  # 뉴스 카테고리
     views = db.Column(db.Integer, default=0)  # 조회수
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    images = db.Column(db.JSON, nullable=True)  # 이미지 정보 JSON
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)  # nullable로 변경
+    
+    # 이미지 관련 필드
+    image_url = db.Column(db.String(512), nullable=True)  # 원본 이미지 URL
+    image_path = db.Column(db.String(512), nullable=True)  # 로컬에 저장된 이미지 경로
+    thumbnail_path = db.Column(db.String(512), nullable=True)  # 로컬에 저장된 썸네일 경로
+    
+    # 추가 필드
+    images = db.Column(db.JSON, nullable=True)  # 여러 이미지 정보 JSON
     author = db.Column(db.String(100), nullable=True)  # 기사 작성자
     author_email = db.Column(db.String(150), nullable=True)  # 작성자 이메일
+    source_id = db.Column(db.String(128), nullable=True, index=True)  # 원본 뉴스 ID
+    is_deleted = db.Column(db.Boolean, default=False)
     
     def __repr__(self):
         return f"<News {self.id}: {self.title} - Category: {self.category}>"
@@ -31,6 +40,7 @@ class News(db.Model):
             "content": self.content,
             "source": self.source,
             "thumbnail": self.thumbnail,
+            "thumbnail_path": self.thumbnail_path,
             "source_url": self.source_url,
             "created_at": self.created_at,
             "published_at": self.published_at,
