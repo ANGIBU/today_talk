@@ -1,4 +1,4 @@
-# Dockerfile
+# /home/livon/projects/today_talk/Dockerfile
 FROM python:3.9-slim
 
 WORKDIR /app
