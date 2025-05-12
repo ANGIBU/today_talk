@@ -2,6 +2,8 @@
 import os
 import sys
 import logging
+import threading
+import time
 from dotenv import load_dotenv
 from flask import Flask, jsonify, send_from_directory
 from flask_migrate import Migrate
@@ -12,8 +14,6 @@ from sqlalchemy.sql import text
 from utils.log import setup_logging
 from routes import blueprints
 from db import db, init_app
-import threading
-import time
 
 # Windows 환경에서 UnicodeEncodeError 방지
 sys.stdout.reconfigure(encoding="utf-8")
@@ -49,7 +49,9 @@ def create_app():
         app.config.from_object("config.development.DevelopmentConfig")
 
     # 데이터베이스 초기화 - 개선된 init_app 함수 사용
-    init_app(app)
+    db_connected = init_app(app)
+
+    # 데이터베이스 연결 실패해도 앱은 계속 실행 (일부 기능만 사용 가능)
     migrate = Migrate(app, db)
 
     # 사용자 인증 설정
@@ -60,14 +62,33 @@ def create_app():
     @login_manager.user_loader
     def load_user(user_id):
         from models.user import User
-        return db.session.get(User, int(user_id))
+        try:
+            return db.session.get(User, int(user_id))
+        except Exception as e:
+            app.logger.error(f"사용자 로드 오류: {e}")
+            return None
 
-    # 메일 설정
+    # 메일 설정 - 오류 처리 개선
+    mail_config = {
+        'MAIL_SERVER': os.getenv('MAIL_SERVER', 'localhost'),
+        'MAIL_PORT': int(os.getenv('MAIL_PORT', 25)),
+        'MAIL_USERNAME': os.getenv('MAIL_USERNAME', ''),
+        'MAIL_PASSWORD': os.getenv('MAIL_PASSWORD', ''),
+        'MAIL_USE_TLS': os.getenv('MAIL_USE_TLS', 'False').lower() == 'true',
+        'MAIL_USE_SSL': os.getenv('MAIL_USE_SSL', 'False').lower() == 'true',
+        'MAIL_DEFAULT_SENDER': os.getenv('MAIL_DEFAULT_SENDER', 'noreply@example.com')
+    }
+    
+    # 메일 설정 적용
+    for key, value in mail_config.items():
+        app.config[key] = value
+    
     mail = Mail(app)
+    
+    # 메일 설정 경고 (심각한 오류가 아니므로 경고만 표시)
     if not app.config.get("MAIL_USERNAME") or not app.config.get("MAIL_PASSWORD"):
-        print("[ERROR] 메일 설정이 누락되었습니다. SMTP 설정을 확인하세요.")
-        # 경고만 표시하고 계속 진행 (sys.exit 제거)
-        print("[WARNING] 메일 기능이 비활성화됩니다.")
+        print("[WARNING] 메일 설정이 누락되었습니다. SMTP 설정을 확인하세요.")
+        print("[WARNING] 메일 기능이 제한적으로 작동할 수 있습니다.")
 
     # CORS 설정
     CORS(app)
@@ -89,7 +110,7 @@ def create_app():
     @app.route('/favicon.ico')
     def favicon():
         return send_from_directory(os.path.join(app.root_path, 'static'),
-                                   'favicon.ico', mimetype='image/vnd.microsoft.icon')
+                                  'favicon.ico', mimetype='image/vnd.microsoft.icon')
 
     # 404, 500 에러 핸들러 추가
     @app.errorhandler(404)
@@ -106,24 +127,34 @@ def create_app():
 def background_scraper(app):
     """
     5분마다 스크래핑을 실행하는 백그라운드 함수
+    연결 오류 발생 시 안전하게 처리합니다.
     """
-    from scripts.scrape_naver_news import scrape_naver_news, NAVER_NEWS_CATEGORIES
+    try:
+        from scripts.scrape_naver_news import scrape_naver_news, NAVER_NEWS_CATEGORIES
+    except ImportError as e:
+        print(f"[ERROR] 스크래핑 모듈을 불러올 수 없습니다: {e}")
+        return
 
     while True:
         with app.app_context():
-            print("[INFO] 스크래핑 작업 실행 중...")
+            try:
+                print("[INFO] 스크래핑 작업 실행 중...")
 
-            # 각 카테고리별 뉴스 스크래핑
-            for category, url in NAVER_NEWS_CATEGORIES.items():
-                try:
-                    # app 객체 전달하여 이미지 저장 경로 설정
-                    scrape_naver_news(url, category, app=app)
-                    print(f"[SUCCESS] {category} 카테고리 스크래핑 완료")
-                except Exception as e:
-                    print(f"[ERROR] {category} 카테고리 스크래핑 실패: {e}")
-
-        # 5분(300초)마다 실행
-        time.sleep(300)
+                # 각 카테고리별 뉴스 스크래핑
+                for category, url in NAVER_NEWS_CATEGORIES.items():
+                    try:
+                        # app 객체 전달하여 이미지 저장 경로 설정
+                        scrape_naver_news(url, category, app=app)
+                        print(f"[SUCCESS] {category} 카테고리 스크래핑 완료")
+                    except Exception as e:
+                        print(f"[ERROR] {category} 카테고리 스크래핑 실패: {e}")
+                        # 오류 발생해도 다음 카테고리 계속 진행
+                        continue
+            except Exception as e:
+                print(f"[ERROR] 스크래핑 작업 중 예외 발생: {e}")
+            finally:
+                # 5분(300초)마다 실행 (오류가 발생해도 계속 실행)
+                time.sleep(300)
 
 
 # 전역 예외 처리: 스택 트레이스 억제
@@ -142,7 +173,7 @@ if __name__ == "__main__":
     print("    flask db migrate -m 'Add image_path and thumbnail_path to News model'")
     print("    flask db upgrade")
 
-    # 데이터베이스 테이블 생성 확인
+    # 데이터베이스 테이블 생성 시도 (실패해도 계속 진행)
     with app.app_context():
         try:
             db.create_all()  # 테이블이 없으면 생성
@@ -161,6 +192,7 @@ if __name__ == "__main__":
         print("[WARNING] 백그라운드 스크래퍼 없이 계속 진행합니다.")
 
     print("[INFO] 애플리케이션 실행 준비 완료")
-    # 호스트와 포트 설정 변경 - 환경변수로 포트 설정 가능하도록 수정
+    
+    # 호스트와 포트 설정
     port = int(os.getenv("PORT", 5003))
     app.run(host="0.0.0.0", port=port, debug=(os.getenv("FLASK_ENV", "production") == "development"), use_reloader=False)
